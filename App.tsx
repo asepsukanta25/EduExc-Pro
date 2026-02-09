@@ -387,7 +387,8 @@ const App: React.FC = () => {
                  <span className="px-5 py-2 bg-indigo-900 text-white rounded-full text-[11px] font-black uppercase tracking-[0.2em]">{q.type}</span>
                  <span className="px-5 py-2 bg-amber-100 text-amber-700 rounded-full text-[11px] font-black uppercase tracking-[0.2em]">LEVEL {q.level}</span>
               </div>
-              <div className={`prose max-w-none font-bold text-slate-800 leading-relaxed transition-all duration-300 rich-content ${questionSizeClasses[questionZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
+              {/* Diubah dari font-bold ke font-medium */}
+              <div className={`prose max-w-none font-medium text-slate-800 leading-relaxed transition-all duration-300 rich-content ${questionSizeClasses[questionZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
               {q.image && <div className="rounded-[3rem] border-8 border-slate-50 overflow-hidden shadow-2xl mt-12"><img src={q.image} className="w-full h-auto object-contain" alt="Stimulus" /></div>}
             </div>
           </div>
@@ -400,7 +401,8 @@ const App: React.FC = () => {
                <button onClick={() => setOptionsZoom(Math.min(optionsSizeClasses.length - 1, optionsZoom + 1))} className="w-10 h-10 bg-white hover:bg-indigo-50 text-slate-600 rounded-xl font-black flex items-center justify-center border border-slate-200">A+</button>
             </div>
             <div className="lg:hidden space-y-6 mb-8 border-b pb-8">
-               <div className={`prose font-bold text-slate-800 rich-content ${questionSizeClasses[questionZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
+               {/* Diubah dari font-bold ke font-medium */}
+               <div className={`prose font-medium text-slate-800 rich-content ${questionSizeClasses[questionZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
                {q.image && <img src={q.image} className="w-full h-auto rounded-2xl" />}
             </div>
             <div className="space-y-4">
@@ -421,7 +423,8 @@ const App: React.FC = () => {
                         const isUserRowWrong = hasChecked && userVal !== null && userVal !== correctVal;
                         return (
                           <tr key={i} className={`border-b border-slate-50 last:border-0 transition-colors hover:bg-slate-50 ${isUserRowWrong ? 'bg-rose-50' : (hasChecked ? 'bg-emerald-50/20' : '')}`}>
-                            <td className={`p-5 font-bold text-slate-700 transition-all duration-300 ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
+                            {/* Diubah dari font-bold ke font-normal */}
+                            <td className={`p-5 font-normal text-slate-700 transition-all duration-300 ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
                             <td className="p-5 text-center">
                               <div className="flex gap-2 justify-center">
                                  <button disabled={hasChecked} onClick={() => { const next = [...(userAnswer || [])]; next[i] = true; setUserAnswer(next); }} className={`w-10 h-10 rounded-xl font-black text-xs transition-all border-2 ${userAnswer?.[i] === true ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'} ${hasChecked && correctVal === true ? 'ring-4 ring-emerald-500 ring-offset-2 !bg-emerald-600 !text-white !border-emerald-600' : ''}`}>{q.type === QuestionType.BenarSalah ? 'B' : 'S'}</button>
@@ -444,7 +447,8 @@ const App: React.FC = () => {
                       <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white' : (hasChecked && isOptCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400')}`}>
                         {isMCMA ? (isSelected ? <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg> : <div className="w-5 h-5 border-2 border-slate-300 rounded-md"></div>) : <span className="text-base font-black">{String.fromCharCode(65+i)}</span>}
                       </div>
-                      <div className={`font-bold flex-grow transition-all duration-300 ${hasChecked && isOptCorrect ? 'text-emerald-900' : (isUserWrong ? 'text-rose-900' : 'text-slate-700')} ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
+                      {/* Diubah dari font-bold ke font-normal */}
+                      <div className={`font-normal flex-grow transition-all duration-300 ${hasChecked && isOptCorrect ? 'text-emerald-900' : (isUserWrong ? 'text-rose-900' : 'text-slate-700')} ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
                    </button>
                  );
                })}
@@ -459,7 +463,7 @@ const App: React.FC = () => {
                       <div className="bg-white p-10 rounded-[2.5rem] border-4 border-slate-100 shadow-sm space-y-6 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-5"><svg className="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M7.127 22.562l-7.127-1.414 1.414-7.128 15.116-11.020 5.713 5.713-15.116 12.849zm-4.767-2.528l3.62.718 11.23-9.544-4.337-4.338-10.513 7.664.001 5.5zm16.101-13.013l3.182-3.181 2.546 2.546-3.182 3.182-2.546-2.547z"/></svg></div>
                         <div className="flex items-center gap-4"><div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black">?</div><h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">Analisis Uraian Bersama</h4></div>
-                        <textarea disabled={hasChecked} className="w-full min-h-[150px] p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl font-bold text-slate-600 outline-none focus:border-indigo-400" placeholder="Guru dapat menulis poin-poin jawaban siswa di sini untuk didiskusikan..." value={userAnswer || ''} onChange={e => setUserAnswer(e.target.value)} />
+                        <textarea disabled={hasChecked} className="w-full min-h-[150px] p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl font-medium text-slate-600 outline-none focus:border-indigo-400" placeholder="Guru dapat menulis poin-poin jawaban siswa di sini untuk didiskusikan..." value={userAnswer || ''} onChange={e => setUserAnswer(e.target.value)} />
                       </div>
                     )}
                  </div>
@@ -473,12 +477,12 @@ const App: React.FC = () => {
                    {isCorrect ? (
                      <div className="p-6 bg-emerald-600 text-white rounded-[2rem] text-center font-black text-xl shadow-xl flex items-center justify-center gap-4"><span className="text-3xl">🎉</span>JAWABAN BENAR! KERJA BAGUS!</div>
                    ) : (
-                     <div className="p-6 bg-rose-600 text-white rounded-[2rem] shadow-xl space-y-3"><div className="flex items-center gap-4 font-black text-xl"><span className="text-3xl">❌</span>JAWABAN KURANG TEPAT</div><div className="bg-white/10 p-4 rounded-xl text-sm font-bold italic leading-relaxed">{isAnalyzingFeedback ? <div className="flex items-center gap-3"><div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>Analisis kekeliruan...</div> : (wrongAnswerFeedback || "Coba perhatikan kembali informasi di dalam soal.")}</div></div>
+                     <div className="p-6 bg-rose-600 text-white rounded-[2rem] shadow-xl space-y-3"><div className="flex items-center gap-4 font-black text-xl"><span className="text-3xl">❌</span>JAWABAN KURANG TEPAT</div><div className="bg-white/10 p-4 rounded-xl text-sm font-medium italic leading-relaxed">{isAnalyzingFeedback ? <div className="flex items-center gap-3"><div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>Analisis kekeliruan...</div> : (wrongAnswerFeedback || "Coba perhatikan kembali informasi di dalam soal.")}</div></div>
                    )}
                    {!showExplanation ? (
                      <button onClick={() => setShowExplanation(true)} className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black text-lg uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-4 group"><span>✨</span>Tampilkan Pembahasan</button>
                    ) : (
-                     <div className="p-8 rounded-[2.5rem] discussion-gradient border-4 border-indigo-100 shadow-2xl animate-slide-in space-y-6"><div className="flex items-center gap-5 border-b border-indigo-100 pb-5"><div className="w-14 h-14 shrink-0 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl">💡</div><div><h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Langkah Penyelesaian</h3><p className="text-indigo-600 font-black text-[10px] uppercase tracking-widest">Solusi Berbasis Konsep</p></div></div><div className={`prose max-w-none text-slate-700 leading-relaxed font-bold explanation-text transition-all duration-300 ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.explanation || 'Pembahasan belum tersedia.') }}></div></div>
+                     <div className="p-8 rounded-[2.5rem] discussion-gradient border-4 border-indigo-100 shadow-2xl animate-slide-in space-y-6"><div className="flex items-center gap-5 border-b border-indigo-100 pb-5"><div className="w-14 h-14 shrink-0 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl">💡</div><div><h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Langkah Penyelesaian</h3><p className="text-indigo-600 font-black text-[10px] uppercase tracking-widest">Solusi Berbasis Konsep</p></div></div><div className={`prose max-w-none text-slate-700 leading-relaxed font-normal explanation-text transition-all duration-300 ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.explanation || 'Pembahasan belum tersedia.') }}></div></div>
                    )}
                 </div>
               )}

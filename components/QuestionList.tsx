@@ -147,7 +147,8 @@ const QuestionList: React.FC<Props> = ({
             </div>
 
             <div className="p-6 space-y-5">
-              <div className="prose prose-slate max-w-none text-slate-800 font-medium leading-relaxed rich-content" dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
+              {/* Diubah dari font-medium ke font-normal */}
+              <div className="prose prose-slate max-w-none text-slate-800 font-normal leading-relaxed rich-content" dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
               
               {q.image && !imgErrors[q.id] && (
                 <div className="max-w-md border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
@@ -166,7 +167,8 @@ const QuestionList: React.FC<Props> = ({
                     return (
                       <div key={i} className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${isCorrect ? 'bg-emerald-50 border-emerald-500/30' : 'bg-slate-50 border-slate-100'}`}>
                         <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}>{String.fromCharCode(65+i)}</span>
-                        <span className="text-xs font-bold text-slate-700" dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
+                        {/* Diubah dari font-bold ke font-normal */}
+                        <span className="text-xs font-normal text-slate-700" dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
                         {isCorrect && <svg className="ml-auto w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
                       </div>
                     );
@@ -179,7 +181,8 @@ const QuestionList: React.FC<Props> = ({
                   <div className="bg-amber-100 p-1 rounded-lg"><svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
                   <div>
                     <span className="font-black uppercase block mb-1 text-[9px] tracking-wider text-amber-700">Analisis Pakar:</span>
-                    <div className="text-[10px] font-medium text-amber-800 leading-relaxed italic explanation-text" dangerouslySetInnerHTML={{ __html: formatRichText(q.explanation) }}></div>
+                    {/* Diubah dari font-medium ke font-normal */}
+                    <div className="text-[10px] font-normal text-amber-800 leading-relaxed italic explanation-text" dangerouslySetInnerHTML={{ __html: formatRichText(q.explanation) }}></div>
                   </div>
                 </div>
               )}
