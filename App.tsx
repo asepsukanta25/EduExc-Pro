@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [showNavDrawer, setShowNavDrawer] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const [showMaterialIntro, setShowMaterialIntro] = useState(false);
   const [splitWidth, setSplitWidth] = useState(60); 
@@ -64,11 +65,22 @@ const App: React.FC = () => {
   useEffect(() => {
     window.addEventListener('mousemove', resize);
     window.addEventListener('mouseup', stopResizing);
+    const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handleFsChange);
     return () => {
       window.removeEventListener('mousemove', resize);
       window.removeEventListener('mouseup', stopResizing);
+      document.removeEventListener('fullscreenchange', handleFsChange);
     };
   }, [resize, stopResizing]);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(e => console.error(e));
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   const resetInteraction = useCallback((index: number, qs: EduCBTQuestion[]) => {
     if (!qs[index]) return;
@@ -247,7 +259,14 @@ const App: React.FC = () => {
   };
 
   if (view === 'landing') return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 text-center">
+    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 text-center relative">
+      <button onClick={toggleFullscreen} className="absolute top-8 right-8 p-4 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-2xl transition-all border border-white/10 flex items-center gap-2">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {isFullscreen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10V4m0 0L4 9m5-5l5 5M15 14v6m0 0l5-5m-5 5l-5-5" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />}
+        </svg>
+        <span className="text-[10px] font-black uppercase tracking-widest">{isFullscreen ? 'Exit Full' : 'Go Fullscreen'}</span>
+      </button>
+
       {showAdminLogin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4">
           <div className="bg-white p-10 rounded-[2.5rem] w-full max-w-sm shadow-2xl animate-slide-in">
@@ -374,7 +393,14 @@ const App: React.FC = () => {
               <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest">{q.quizToken} • SOAL {currentQuestionIndex + 1} DARI {displayQuestions.length}</p>
             </div>
           </div>
-          <button onClick={() => setView('landing')} className="px-8 py-3 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-100 transition-all">Keluar</button>
+          <div className="flex items-center gap-3">
+            <button onClick={toggleFullscreen} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Layar Penuh">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isFullscreen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10V4m0 0L4 9m5-5l5 5M15 14v6m0 0l5-5m-5 5l-5-5" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />}
+              </svg>
+            </button>
+            <button onClick={() => setView('landing')} className="px-8 py-3 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-100 transition-all">Keluar</button>
+          </div>
         </header>
         <main className="flex-grow flex flex-col lg:flex-row overflow-hidden relative">
           <div style={{ width: `${splitWidth}%` }} className="hidden lg:block overflow-y-auto p-8 md:p-12 lg:p-16 border-r border-slate-100 relative group/left">
