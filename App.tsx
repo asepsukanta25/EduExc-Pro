@@ -6,7 +6,7 @@ import ManualEntryForm from './components/ManualEntryForm';
 import QuestionList from './components/QuestionList';
 import QuestionEditor from './components/QuestionEditor';
 import { EduCBTQuestion, QuestionType } from './types';
-import { generateEduCBTQuestions, repairQuestionOptions, generateTeachingMaterial, generateWrongAnswerFeedback } from './geminiService';
+import { generateEduCBTQuestions, repairQuestionOptions, generateTeachingMaterial } from './geminiService';
 import { exportQuestionsToExcel, downloadExcelTemplate, importQuestionsFromExcel } from './utils/exportUtils';
 import { shuffleQuestions, shuffleAllOptions } from './utils/shuffleUtils';
 
@@ -32,8 +32,6 @@ const App: React.FC = () => {
   const [userAnswer, setUserAnswer] = useState<any>(null);
   const [hasChecked, setHasChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [wrongAnswerFeedback, setWrongAnswerFeedback] = useState<string | null>(null);
-  const [isAnalyzingFeedback, setIsAnalyzingFeedback] = useState(false);
 
   // Text Zoom States
   const [questionZoom, setQuestionZoom] = useState(2); 
@@ -77,7 +75,6 @@ const App: React.FC = () => {
     const q = qs[index];
     setHasChecked(false);
     setIsCorrect(null);
-    setWrongAnswerFeedback(null);
     setShowExplanation(false);
     
     // Initialize default answer structure based on type
@@ -166,13 +163,6 @@ const App: React.FC = () => {
 
     setIsCorrect(correct);
     setHasChecked(true);
-
-    if (!correct) {
-      setIsAnalyzingFeedback(true);
-      const feedback = await generateWrongAnswerFeedback(q, userAnswer);
-      setWrongAnswerFeedback(feedback);
-      setIsAnalyzingFeedback(false);
-    }
   };
 
   const handleGenerateMaterial = async () => {
@@ -477,7 +467,9 @@ const App: React.FC = () => {
                    {isCorrect ? (
                      <div className="p-6 bg-emerald-600 text-white rounded-[2rem] text-center font-black text-xl shadow-xl flex items-center justify-center gap-4"><span className="text-3xl">🎉</span>JAWABAN BENAR! KERJA BAGUS!</div>
                    ) : (
-                     <div className="p-6 bg-rose-600 text-white rounded-[2rem] shadow-xl space-y-3"><div className="flex items-center gap-4 font-black text-xl"><span className="text-3xl">❌</span>JAWABAN KURANG TEPAT</div><div className="bg-white/10 p-4 rounded-xl text-sm font-medium italic leading-relaxed">{isAnalyzingFeedback ? <div className="flex items-center gap-3"><div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>Analisis kekeliruan...</div> : (wrongAnswerFeedback || "Coba perhatikan kembali informasi di dalam soal.")}</div></div>
+                     <div className="p-6 bg-rose-600 text-white rounded-[2rem] shadow-xl space-y-3">
+                        <div className="flex items-center gap-4 font-black text-xl"><span className="text-3xl">❌</span>JAWABAN KURANG TEPAT</div>
+                     </div>
                    )}
                    {!showExplanation ? (
                      <button onClick={() => setShowExplanation(true)} className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black text-lg uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-4 group"><span>✨</span>Tampilkan Pembahasan</button>

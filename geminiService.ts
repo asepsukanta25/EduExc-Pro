@@ -45,32 +45,6 @@ async function smartGeminiCall(payload: any, maxRetries = 4) {
   throw lastError;
 }
 
-export const generateWrongAnswerFeedback = async (question: EduCBTQuestion, studentAnswer: any): Promise<string> => {
-  const prompt = `
-    KONTEKS: Siswa menjawab soal berikut namun jawabannya SALAH.
-    SOAL: ${question.text}
-    OPSI JAWABAN (jika ada): ${JSON.stringify(question.options)}
-    JAWABAN BENAR: ${JSON.stringify(question.correctAnswer)}
-    JAWABAN SISWA: ${JSON.stringify(studentAnswer)}
-
-    TUGAS: Berikan komentar singkat, memotivasi, dan edukatif (maksimal 2 kalimat).
-    Jelaskan secara halus di mana letak kekeliruan logika dari jawaban siswa tersebut tanpa langsung memberikan jawaban benarnya secara gamblang.
-    Gunakan bahasa yang ramah untuk siswa.
-  `;
-
-  try {
-    const response = await smartGeminiCall({
-      contents: [{ text: prompt }],
-      config: {
-        systemInstruction: "Anda adalah asisten guru yang memberikan feedback motivatif dan membimbing siswa saat mereka salah menjawab soal."
-      }
-    });
-    return response.text || "Jawabanmu kurang tepat, coba analisis kembali pertanyaannya ya!";
-  } catch (e) {
-    return "Jawabanmu kurang tepat, yuk coba cek pembahasannya!";
-  }
-};
-
 export const generateTeachingMaterial = async (questions: EduCBTQuestion[]): Promise<string> => {
   const context = questions.map(q => `[Soal ${q.order} - ${q.type}]: ${q.text}`).join("\n");
   const prompt = `
