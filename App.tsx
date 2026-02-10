@@ -94,21 +94,31 @@ const App: React.FC = () => {
     } else { alert("Password Salah!"); }
   };
 
-  const handleLandingExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLandingFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsImportingLanding(true);
     try {
-      const importedQuestions = await importQuestionsFromExcel(file);
-      setQuestions(prev => [...prev, ...importedQuestions]);
+      let importedQuestions: EduCBTQuestion[] = [];
+      
+      if (file.name.toLowerCase().endsWith('.json')) {
+        const text = await file.text();
+        importedQuestions = JSON.parse(text);
+      } else {
+        importedQuestions = await importQuestionsFromExcel(file);
+      }
+
       if (importedQuestions.length > 0) {
+        setQuestions(prev => [...prev, ...importedQuestions]);
         const token = importedQuestions[0].quizToken;
         setActiveToken(token);
         alert(`Berhasil mengimpor ${importedQuestions.length} soal. Mengalihkan ke Manajemen Soal...`);
         setView('admin'); 
+      } else {
+        alert("File kosong atau tidak valid.");
       }
     } catch (err) {
-      alert("Gagal memproses file Excel. Pastikan format kolom benar.");
+      alert("Gagal memproses file. Pastikan format file (JSON/Excel) benar.");
     } finally {
       setIsImportingLanding(false);
       e.target.value = '';
@@ -280,7 +290,7 @@ const App: React.FC = () => {
                     <label className={`flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 hover:bg-white border-2 border-slate-100 hover:border-indigo-200 rounded-3xl transition-all group cursor-pointer ${isImportingLanding ? 'opacity-50' : ''}`}>
                        <span className="text-2xl group-hover:scale-110 transition-transform">{isImportingLanding ? '⏳' : '📤'}</span>
                        <span className="text-[9px] font-black text-slate-500 uppercase">{isImportingLanding ? 'Loading...' : 'Upload Soal'}</span>
-                       <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleLandingExcelImport} disabled={isImportingLanding} />
+                       <input type="file" className="hidden" accept=".xlsx, .xls, .json" onChange={handleLandingFileImport} disabled={isImportingLanding} />
                     </label>
                  </div>
               </div>
