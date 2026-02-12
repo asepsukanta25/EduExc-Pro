@@ -7,7 +7,7 @@ import QuestionList from './components/QuestionList';
 import QuestionEditor from './components/QuestionEditor';
 import { EduCBTQuestion, QuestionType } from './types';
 import { generateEduCBTQuestions, repairQuestionOptions, generateTeachingMaterial } from './geminiService';
-import { exportQuestionsToExcel, downloadExcelTemplate, importQuestionsFromExcel } from './utils/exportUtils';
+import { exportQuestionsToExcel, downloadExcelTemplate, importQuestionsFromExcel, printAnswerSheet, downloadAnswerSheetPdf } from './utils/exportUtils';
 import { shuffleQuestions, shuffleAllOptions } from './utils/shuffleUtils';
 
 const App: React.FC = () => {
@@ -209,6 +209,16 @@ const App: React.FC = () => {
   const handleExportQuestions = () => {
     if (activeQuestionsSorted.length === 0) return alert("Tidak ada soal untuk diekspor.");
     exportQuestionsToExcel(activeQuestionsSorted, exerciseSettings);
+  };
+
+  const handlePrintAnswerSheet = () => {
+    if (activeQuestionsSorted.length === 0) return alert("Tidak ada soal untuk dibuatkan lembar jawaban.");
+    printAnswerSheet(activeQuestionsSorted, activeQuestionsSorted[0].subject);
+  };
+
+  const handleDownloadAnswerSheetPdf = () => {
+    if (activeQuestionsSorted.length === 0) return alert("Tidak ada soal untuk dibuatkan lembar jawaban.");
+    downloadAnswerSheetPdf(activeQuestionsSorted, activeQuestionsSorted[0].subject);
   };
 
   const formatRichText = (text: string) => {
@@ -534,6 +544,14 @@ const App: React.FC = () => {
         <div className="flex gap-4 items-center">
           {activeQuestionsSorted.length > 0 && (
             <>
+              <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                <button onClick={handleDownloadAnswerSheetPdf} className="bg-slate-700 hover:bg-slate-600 text-indigo-300 px-3 py-1.5 rounded-md flex items-center gap-2 transition-all text-[9px] font-black uppercase tracking-tight" title="Unduh Lembar Jawaban PDF">
+                  <span>📄</span><span>LJK PDF</span>
+                </button>
+                <button onClick={handlePrintAnswerSheet} className="bg-slate-700 hover:bg-slate-600 text-indigo-300 px-3 py-1.5 rounded-md flex items-center gap-2 transition-all text-[9px] font-black uppercase tracking-tight" title="Cetak Lembar Jawaban">
+                  <span>🖨️</span><span>Cetak LJK</span>
+                </button>
+              </div>
               <button onClick={handleGenerateMaterial} className="bg-amber-600 hover:bg-amber-700 px-4 py-1.5 rounded-lg flex items-center gap-2 transition-all shadow-lg">
                 <span>✨</span><span>Susun Materi Ajar</span>
               </button>
