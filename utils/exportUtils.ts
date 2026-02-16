@@ -37,22 +37,49 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
 
         const rows = jsonData.slice(1);
         const questions: EduCBTQuestion[] = rows.map((row: any, index: number) => {
-          const type = row[1] || QuestionType.PilihanGanda;
+          // 1. Normalize Type
+          let rawType = String(row[1] || '').trim();
+          let type = QuestionType.PilihanGanda;
+          
+          if (rawType.includes('Jamak') || rawType.includes('MCMA')) type = QuestionType.MCMA;
+          else if (rawType.includes('Benar/Salah') || rawType.includes('B/S')) type = QuestionType.BenarSalah;
+          else if (rawType.includes('Sesuai') || rawType.includes('S/TS')) type = QuestionType.SesuaiTidakSesuai;
+          else if (rawType.toUpperCase().includes('ISIAN')) type = QuestionType.Isian;
+          else if (rawType.toUpperCase().includes('URAIAN')) type = QuestionType.Uraian;
+
+          // 2. Parse Correct Answer based on normalized type
           let correctAnswer: any = row[11];
+          let rawKunci = String(row[11] || '').trim();
 
           if (type === QuestionType.PilihanGanda) {
-            const charCode = String(row[11]).trim().toUpperCase().charCodeAt(0);
-            correctAnswer = charCode - 65; 
-            if (isNaN(correctAnswer) || correctAnswer < 0) correctAnswer = 0;
+            // Support "A" or "0"
+            const charCode = rawKunci.toUpperCase().charCodeAt(0);
+            if (charCode >= 65 && charCode <= 69) {
+              correctAnswer = charCode - 65; 
+            } else {
+              correctAnswer = parseInt(rawKunci) || 0;
+            }
           } else if (type === QuestionType.MCMA) {
-             const parts = String(row[11]).split(',').map(p => p.trim().toUpperCase().charCodeAt(0) - 65);
-             correctAnswer = parts.filter(p => !isNaN(p) && p >= 0);
+             // Support "A, C" or "0, 2"
+             const parts = rawKunci.split(/[,;]/).map(p => p.trim().toUpperCase());
+             correctAnswer = parts.map(p => {
+               const code = p.charCodeAt(0);
+               return (code >= 65 && code <= 69) ? (code - 65) : parseInt(p);
+             }).filter(p => !isNaN(p));
           } else if (type === QuestionType.BenarSalah || type === QuestionType.SesuaiTidakSesuai) {
-             const parts = String(row[11]).split(',').map(p => {
-               const val = p.trim().toUpperCase();
-               return val === 'B' || val === 'S' || val === 'BENAR' || val === 'SESUAI';
+             // CRITICAL FIX: S is Salah (false) in Benar/Salah context, but can be Sesuai (true) in S/TS.
+             // We prioritize explicit words first.
+             const parts = rawKunci.split(/[,;]/).map(p => p.trim().toUpperCase());
+             correctAnswer = parts.map(p => {
+               // Positives: B, Benar, Sesuai, True
+               if (['B', 'BENAR', 'SESUAI', 'TRUE', '1'].includes(p)) return true;
+               // Negatives: S, Salah, TS, Tidak Sesuai, False
+               if (['S', 'SALAH', 'TS', 'TIDAK SESUAI', 'FALSE', '0'].includes(p)) return false;
+               
+               // Default fallback if ambiguous 'S'
+               if (p === 'S') return type === QuestionType.BenarSalah ? false : true;
+               return false;
              });
-             correctAnswer = parts;
           }
 
           return {
@@ -104,39 +131,25 @@ export const printAnswerSheet = (questions: EduCBTQuestion[], subject: string) =
           .header-table { width: 100%; border-collapse: collapse; }
           .header-table td { padding: 2px; font-weight: bold; font-size: 12px; }
           .title { text-align: center; text-decoration: underline; font-size: 16px; margin: 10px 0; font-weight: bold; }
-          
           .section-title { font-weight: bold; margin: 10px 0 5px 0; border-bottom: 1px solid #000; padding-bottom: 2px; font-size: 11px; text-transform: uppercase; }
-          
-          /* Compact Grid */
           .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
           .grid-container-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-          
           .item-row { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 4px; }
           .item-no { width: 20px; font-weight: bold; flex-shrink: 0; text-align: right; }
-          
           .bubbles { display: flex; gap: 4px; }
           .bubble { width: 18px; height: 18px; border: 1.2px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; }
           .bubble-rect { padding: 0 4px; height: 18px; border: 1.2px solid #000; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; min-width: 32px; }
-
-          /* Multi-statement styles compact */
           .multi-statement { display: flex; flex-direction: column; gap: 2px; }
           .statement-row { display: flex; align-items: center; gap: 5px; }
           .statement-label { font-size: 9px; color: #666; width: 35px; }
-          
           .isian-line { border-bottom: 1px dotted #000; flex-grow: 1; height: 16px; margin-left: 5px; }
           .uraian-box { border: 1.2px solid #000; width: 100%; height: 60px; margin-top: 4px; }
-          
-          @media print {
-            body { padding: 0; }
-            .no-print { display: none; }
-          }
+          @media print { body { padding: 0; } .no-print { display: none; } }
         </style>
       </head>
       <body>
         ${content}
-        <script>
-          window.onload = () => { window.print(); window.close(); };
-        </script>
+        <script>window.onload = () => { window.print(); window.close(); };</script>
       </body>
     </html>
   `);
@@ -168,91 +181,44 @@ const generateAnswerSheetHtml = (questions: EduCBTQuestion[], subject: string) =
         </tr>
       </table>
     </div>
-
     <div class="title">LEMBAR JAWABAN SISWA</div>
   `;
 
-  // I. Pilihan Ganda & MCMA (3 Kolom agar hemat tempat)
   if (pgQuestions.length > 0) {
-    html += `<div class="section-title">I. PILIHAN GANDA / JAMAK</div>`;
-    html += `<div class="grid-container">`;
+    html += `<div class="section-title">I. PILIHAN GANDA / JAMAK</div><div class="grid-container">`;
     pgQuestions.forEach(q => {
-      html += `
-        <div class="item-row">
-          <div class="item-no">${q.order}.</div>
-          <div class="bubbles">
-            <div class="bubble">A</div>
-            <div class="bubble">B</div>
-            <div class="bubble">C</div>
-            <div class="bubble">D</div>
-            <div class="bubble">E</div>
-          </div>
-        </div>
-      `;
+      html += `<div class="item-row"><div class="item-no">${q.order}.</div><div class="bubbles"><div class="bubble">A</div><div class="bubble">B</div><div class="bubble">C</div><div class="bubble">D</div><div class="bubble">E</div></div></div>`;
     });
     html += `</div>`;
   }
 
-  // II. Benar/Salah & Sesuai/Tidak Sesuai (2 Kolom)
   if (tfQuestions.length > 0) {
-    html += `<div class="section-title">II. BENAR/SALAH ATAU SESUAI/TIDAK SESUAI</div>`;
-    html += `<div class="grid-container-2">`;
+    html += `<div class="section-title">II. BENAR/SALAH ATAU SESUAI/TIDAK SESUAI</div><div class="grid-container-2">`;
     tfQuestions.forEach(q => {
       const isTF = q.type === QuestionType.BenarSalah;
       const labels = isTF ? ['B', 'S'] : ['S', 'TS'];
       const statementCount = q.options.length || 1;
-
-      html += `
-        <div class="item-row">
-          <div class="item-no">${q.order}.</div>
-          <div class="multi-statement">
-      `;
-      
+      html += `<div class="item-row"><div class="item-no">${q.order}.</div><div class="multi-statement">`;
       for(let i=0; i<statementCount; i++) {
-        html += `
-          <div class="statement-row">
-            <span class="statement-label">Pern. ${i+1}</span>
-            <div class="bubbles">
-              <div class="bubble-rect">${labels[0]}</div>
-              <div class="bubble-rect">${labels[1]}</div>
-            </div>
-          </div>
-        `;
+        html += `<div class="statement-row"><span class="statement-label">Pern. ${i+1}</span><div class="bubbles"><div class="bubble-rect">${labels[0]}</div><div class="bubble-rect">${labels[1]}</div></div></div>`;
       }
-
-      html += `
-          </div>
-        </div>
-      `;
+      html += `</div></div>`;
     });
     html += `</div>`;
   }
 
-  // III. Isian Singkat (2 Kolom)
   if (isianQuestions.length > 0) {
-    html += `<div class="section-title">III. ISIAN SINGKAT</div>`;
-    html += `<div class="grid-container-2">`;
+    html += `<div class="section-title">III. ISIAN SINGKAT</div><div class="grid-container-2">`;
     isianQuestions.forEach(q => {
-      html += `
-        <div class="item-row" style="margin-bottom: 5px;">
-          <div class="item-no">${q.order}.</div>
-          <div class="isian-line"></div>
-        </div>
-      `;
+      html += `<div class="item-row" style="margin-bottom: 5px;"><div class="item-no">${q.order}.</div><div class="isian-line"></div></div>`;
     });
     html += `</div>`;
   }
 
-  // IV. Uraian (Tumpuk bawah, kotak lebih pendek)
   if (uraianQuestions.length > 0) {
     html += `<div class="section-title">IV. URAIAN</div>`;
     uraianQuestions.forEach(q => {
-      html += `
-        <div style="margin-bottom: 10px;">
-          <div style="font-weight: bold; margin-bottom: 2px; font-size: 10px;">No. ${q.order}</div>
-          <div class="uraian-box"></div>
-        </div>
-      `;
+      html += `<div style="margin-bottom: 10px;"><div style="font-weight: bold; margin-bottom: 2px; font-size: 10px;">No. ${q.order}</div><div class="uraian-box"></div></div>`;
     });
   }
 
@@ -266,7 +232,6 @@ export const downloadAnswerSheetPdf = async (questions: EduCBTQuestion[], subjec
   container.style.backgroundColor = '#fff';
   container.style.position = 'absolute';
   container.style.left = '-9999px';
-  
   container.innerHTML = `
     <style>
       body { font-family: Arial, sans-serif; font-size: 11px; color: #333; line-height: 1.1; }
@@ -290,9 +255,7 @@ export const downloadAnswerSheetPdf = async (questions: EduCBTQuestion[], subjec
     </style>
     ${generateAnswerSheetHtml(questions, subject)}
   `;
-  
   document.body.appendChild(container);
-  
   try {
     // @ts-ignore
     const canvas = await window.html2canvas(container, { scale: 2 });
@@ -317,7 +280,7 @@ export const downloadExcelTemplate = () => {
   const data = [
     EXCEL_HEADERS,
     [1, "Pilihan Ganda", "L2", "Sistem Pencernaan", "Apa fungsi lambung?", "", "Menyerap air", "Mencerna protein", "Menghasilkan empedu", "Menyimpan feses", "", "B", "Lambung menghasilkan pepsin untuk protein", "BIO1", 60, "Ya", "Ya", "Biologi"],
-    [2, "URAIAN", "L3", "Fotosintesis", "Jelaskan reaksi terang!", "", "", "", "", "", "", "Reaksi yang butuh cahaya...", "Terjadi di tilakoid", "BIO1", 60, "Ya", "Ya", "Biologi"]
+    [2, "(Benar/Salah)", "L3", "Analisis", "Tentukan kebenaran pernyataan berikut!", "", "Pernyataan 1", "Pernyataan 2", "", "", "", "B, S", "Analisis...", "BIO1", 60, "Ya", "Ya", "Biologi"]
   ];
   const ws = XLSX.utils.aoa_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -330,7 +293,6 @@ export const exportQuestionsToExcel = (questions: EduCBTQuestion[], examSettings
   const XLSX = window.XLSX;
   const formattedData = questions.map((q, i) => {
     let kunci = q.correctAnswer;
-    // Fix: Remove space in enum reference 'Pilihan Ganda' -> 'PilihanGanda'
     if (q.type === QuestionType.PilihanGanda && typeof q.correctAnswer === 'number') {
       kunci = String.fromCharCode(65 + q.correctAnswer);
     } else if (q.type === QuestionType.MCMA && Array.isArray(q.correctAnswer)) {
@@ -346,8 +308,6 @@ export const exportQuestionsToExcel = (questions: EduCBTQuestion[], examSettings
       examSettings.shuffleQuestions ? "Ya" : "Tidak", examSettings.shuffleOptions ? "Ya" : "Tidak", q.subject || "Umum"
     ];
   });
-  
-  // Fix: Ensure XLSX local constant is used correctly for worksheet/workbook operations
   const ws = XLSX.utils.aoa_to_sheet([EXCEL_HEADERS, ...formattedData]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Daftar Soal");

@@ -180,33 +180,33 @@ export const generateEduCBTQuestions = async (config: GenerationConfig): Promise
       if (q.type === "Pilihan Ganda") {
         sanitizedAnswer = parseInt(rawAns.replace(/[^0-9]/g, '')) || 0;
       } else if (q.type === "Pilihan Jamak (MCMA)") {
-        // Jika formatnya string "0,2" ubah ke [0,2]
         if (!rawAns.startsWith('[')) {
-          sanitizedAnswer = rawAns.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+          sanitizedAnswer = rawAns.split(/[,;]/).map(x => parseInt(x.trim())).filter(x => !isNaN(x));
         } else {
           sanitizedAnswer = JSON.parse(rawAns);
         }
       } else if (q.type === "(Benar/Salah)" || q.type === "(Sesuai/Tidak Sesuai)") {
-        // Logika ekstra hati-hati untuk Benar/Salah
         let clean = rawAns.toLowerCase();
         if (clean.startsWith('[')) {
           sanitizedAnswer = JSON.parse(clean);
         } else {
-          // Tangani format "Benar, Salah, Benar"
-          sanitizedAnswer = clean.split(',').map(part => {
+          sanitizedAnswer = clean.split(/[,;]/).map(part => {
             const p = part.trim();
-            return p === 'true' || p === 'benar' || p === 'b' || p === 'sesuai' || p === 's';
+            // B, Benar, Sesuai, True -> true
+            if (['b', 'benar', 'sesuai', 'true', '1'].includes(p)) return true;
+            // Fallback for 's' which is ambiguous. 
+            // In BS it's Salah (false), in S/TS it's Sesuai (true).
+            if (p === 's') return q.type === "(Benar/Salah)" ? false : true;
+            return false;
           });
         }
         
-        // Pastikan jumlah jawaban sama dengan jumlah opsi
         if (Array.isArray(sanitizedAnswer) && q.options && sanitizedAnswer.length < q.options.length) {
           while (sanitizedAnswer.length < q.options.length) sanitizedAnswer.push(false);
         }
       }
     } catch (e) {
-      console.warn("Gagal mensanitasi jawaban:", e);
-      sanitizedAnswer = q.type.includes('Pilihan Ganda') ? 0 : [];
+      sanitizedAnswer = q.type.includes('Ganda') ? 0 : [];
     }
 
     return {
