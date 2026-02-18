@@ -312,10 +312,16 @@ const App: React.FC = () => {
               <div className="text-left space-y-4">
                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Panel Persiapan Guru</p>
                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={downloadExcelTemplate} className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 hover:bg-white border-2 border-slate-100 hover:border-indigo-200 rounded-3xl transition-all group">
-                       <span className="text-2xl group-hover:scale-110 transition-transform">📥</span>
-                       <span className="text-[9px] font-black text-slate-500 uppercase">Template</span>
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      <button onClick={() => downloadExcelTemplate(1)} className="flex items-center gap-2 p-3 bg-slate-50 hover:bg-white border border-slate-100 hover:border-indigo-200 rounded-2xl transition-all group">
+                        <span className="text-xl group-hover:scale-110 transition-transform">📥</span>
+                        <span className="text-[8px] font-black text-slate-500 uppercase leading-tight">Template V1<br/>(Standar)</span>
+                      </button>
+                      <button onClick={() => downloadExcelTemplate(2)} className="flex items-center gap-2 p-3 bg-slate-50 hover:bg-white border border-slate-100 hover:border-indigo-200 rounded-2xl transition-all group">
+                        <span className="text-xl group-hover:scale-110 transition-transform">📥</span>
+                        <span className="text-[8px] font-black text-slate-500 uppercase leading-tight">Template V2<br/>(Advanced)</span>
+                      </button>
+                    </div>
                     <label className={`flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 hover:bg-white border-2 border-slate-100 hover:border-indigo-200 rounded-3xl transition-all group cursor-pointer ${isImportingLanding ? 'opacity-50' : ''}`}>
                        <span className="text-2xl group-hover:scale-110 transition-transform">{isImportingLanding ? '⏳' : '📤'}</span>
                        <span className="text-[9px] font-black text-slate-500 uppercase">{isImportingLanding ? 'Loading...' : 'Upload Soal'}</span>

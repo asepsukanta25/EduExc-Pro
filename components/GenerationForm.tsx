@@ -203,18 +203,28 @@ const GenerationForm: React.FC<Props> = ({ onGenerate, onImportJson, isLoading, 
 
       <div className="border-t pt-8 space-y-4">
         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Bulk Operations (Excel)</h4>
-        <div className="grid grid-cols-2 gap-4">
-          <button 
-            type="button" 
-            onClick={downloadExcelTemplate}
-            className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white hover:border-indigo-400 transition-all group"
-          >
-            <span className="text-xl mb-1 group-hover:scale-110 transition-transform">📥</span>
-            <span className="text-[9px] font-black text-slate-600 uppercase tracking-wider">Download Template</span>
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-2">
+            <button 
+              type="button" 
+              onClick={() => downloadExcelTemplate(1)}
+              className="flex items-center justify-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-white hover:border-indigo-400 transition-all group"
+            >
+              <span className="text-lg group-hover:scale-110 transition-transform">📥</span>
+              <span className="text-[9px] font-black text-slate-600 uppercase tracking-wider text-left">Download Template V1<br/><span className="text-[7px] text-slate-400 font-bold">(Format Standar)</span></span>
+            </button>
+            <button 
+              type="button" 
+              onClick={() => downloadExcelTemplate(2)}
+              className="flex items-center justify-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-white hover:border-indigo-400 transition-all group"
+            >
+              <span className="text-lg group-hover:scale-110 transition-transform">📥</span>
+              <span className="text-[9px] font-black text-slate-600 uppercase tracking-wider text-left">Download Template V2<br/><span className="text-[7px] text-slate-400 font-bold">(ID Soal & Gambar Opsi)</span></span>
+            </button>
+          </div>
           <label className={`flex flex-col items-center justify-center p-4 cursor-pointer bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white hover:border-indigo-400 transition-all group ${isImportingExcel ? 'opacity-50' : ''}`}>
             <span className="text-xl mb-1 group-hover:scale-110 transition-transform">📤</span>
-            <span className="text-[9px] font-black text-slate-600 uppercase tracking-wider">{isImportingExcel ? 'Mengimpor...' : 'Import Excel'}</span>
+            <span className="text-[9px] font-black text-slate-600 uppercase tracking-wider">{isImportingExcel ? 'Mengimpor...' : 'Import Excel (V1/V2)'}</span>
             <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleExcelImport} disabled={isImportingExcel} />
           </label>
         </div>

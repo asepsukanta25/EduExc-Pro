@@ -1,25 +1,19 @@
 
 import { EduCBTQuestion, QuestionType, StudentInfo, ExamResponse } from "../types";
 
-const EXCEL_HEADERS = [
-  "No", 
-  "Tipe Soal", 
-  "Level", 
-  "Materi", 
-  "Teks Soal", 
-  "URL Gambar Stimulus", 
-  "Opsi A", 
-  "Opsi B", 
-  "Opsi C", 
-  "Opsi D", 
-  "Opsi E", 
-  "Kunci Jawaban", 
-  "Pembahasan", 
-  "Token",
-  "Durasi (Menit)",
-  "Acak Soal (Ya/Tidak)",
-  "Acak Opsi (Ya/Tidak)",
-  "Mata Pelajaran"
+export const EXCEL_HEADERS_V1 = [
+  "No", "Tipe Soal", "Level", "Materi", "Teks Soal", "URL Gambar Stimulus", 
+  "Opsi A", "Opsi B", "Opsi C", "Opsi D", "Opsi E", 
+  "Kunci Jawaban", "Pembahasan", "Token", "Durasi (Menit)", 
+  "Acak Soal (Ya/Tidak)", "Acak Opsi (Ya/Tidak)", "Mata Pelajaran"
+];
+
+export const EXCEL_HEADERS_V2 = [
+  "No", "ID Soal", "Tipe", "Level", "Butir Pertanyaan", "Gambar Soal (URL)", 
+  "Opsi A", "Gambar Opsi A (URL)", "Opsi B", "Gambar Opsi B (URL)", 
+  "Opsi C", "Gambar Opsi C (URL)", "Opsi D", "Gambar Opsi D (URL)", 
+  "Opsi E", "Gambar Opsi E (URL)", 
+  "Kunci Jawaban", "Pembahasan", "Token"
 ];
 
 export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuestion[]> => {
@@ -36,47 +30,79 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
         const jsonData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
         const rows = jsonData.slice(1);
+        const headers = jsonData[0] as string[];
+        
+        // Deteksi Versi berdasarkan Header atau Jumlah Kolom
+        const isV2 = headers && (headers[1] === "ID Soal" || headers[4] === "Butir Pertanyaan");
+
         const questions: EduCBTQuestion[] = rows.map((row: any, index: number) => {
-          // 1. Normalize Type
-          let rawType = String(row[1] || '').trim();
+          if (!row || row.length === 0) return null;
+
+          let typeStr = "";
+          let level = "L2";
+          let text = "";
+          let image = "";
+          let options: string[] = [];
+          let optionImages: (string | null)[] = [];
+          let rawKunci = "";
+          let explanation = "";
+          let token = "TOKEN";
+          let material = "";
+          let subject = "Umum";
+          let order = index + 1;
+
+          if (isV2) {
+            // FORMAT V2 (Berdasarkan Screenshot User)
+            order = parseInt(row[0]) || (index + 1);
+            typeStr = String(row[2] || '').trim();
+            level = row[3] || 'L2';
+            text = row[4] || '';
+            image = row[5] || '';
+            options = [row[6], row[8], row[10], row[12], row[14]].filter(o => o !== undefined && o !== "");
+            optionImages = [row[7] || null, row[9] || null, row[11] || null, row[13] || null, row[15] || null];
+            rawKunci = String(row[16] || '').trim();
+            explanation = row[17] || '';
+            token = String(row[18] || 'TOKEN').toUpperCase();
+          } else {
+            // FORMAT V1 (Template Lama)
+            order = parseInt(row[0]) || (index + 1);
+            typeStr = String(row[1] || '').trim();
+            level = row[2] || 'L2';
+            material = row[3] || '';
+            text = row[4] || '';
+            image = row[5] || '';
+            options = [row[6], row[7], row[8], row[9], row[10]].filter(o => o !== undefined && o !== "");
+            rawKunci = String(row[11] || '').trim();
+            explanation = row[12] || '';
+            token = String(row[13] || 'TOKEN').toUpperCase();
+            subject = row[17] || 'Umum';
+          }
+
+          // Normalize Type
           let type = QuestionType.PilihanGanda;
-          
-          if (rawType.includes('Jamak') || rawType.includes('MCMA')) type = QuestionType.MCMA;
-          else if (rawType.includes('Benar/Salah') || rawType.includes('B/S')) type = QuestionType.BenarSalah;
-          else if (rawType.includes('Sesuai') || rawType.includes('S/TS')) type = QuestionType.SesuaiTidakSesuai;
-          else if (rawType.toUpperCase().includes('ISIAN')) type = QuestionType.Isian;
-          else if (rawType.toUpperCase().includes('URAIAN')) type = QuestionType.Uraian;
+          if (typeStr.includes('Jamak') || typeStr.includes('MCMA')) type = QuestionType.MCMA;
+          else if (typeStr.includes('Benar/Salah') || typeStr.includes('B/S')) type = QuestionType.BenarSalah;
+          else if (typeStr.includes('Sesuai') || typeStr.includes('S/TS')) type = QuestionType.SesuaiTidakSesuai;
+          else if (typeStr.toUpperCase().includes('ISIAN')) type = QuestionType.Isian;
+          else if (typeStr.toUpperCase().includes('URAIAN')) type = QuestionType.Uraian;
 
-          // 2. Parse Correct Answer based on normalized type
-          let correctAnswer: any = row[11];
-          let rawKunci = String(row[11] || '').trim();
-
+          // Parse Kunci
+          let correctAnswer: any = rawKunci;
           if (type === QuestionType.PilihanGanda) {
-            // Support "A" or "0"
             const charCode = rawKunci.toUpperCase().charCodeAt(0);
-            if (charCode >= 65 && charCode <= 69) {
-              correctAnswer = charCode - 65; 
-            } else {
-              correctAnswer = parseInt(rawKunci) || 0;
-            }
+            if (charCode >= 65 && charCode <= 69) correctAnswer = charCode - 65;
+            else correctAnswer = parseInt(rawKunci) || 0;
           } else if (type === QuestionType.MCMA) {
-             // Support "A, C" or "0, 2"
              const parts = rawKunci.split(/[,;]/).map(p => p.trim().toUpperCase());
              correctAnswer = parts.map(p => {
                const code = p.charCodeAt(0);
                return (code >= 65 && code <= 69) ? (code - 65) : parseInt(p);
              }).filter(p => !isNaN(p));
           } else if (type === QuestionType.BenarSalah || type === QuestionType.SesuaiTidakSesuai) {
-             // CRITICAL FIX: S is Salah (false) in Benar/Salah context, but can be Sesuai (true) in S/TS.
-             // We prioritize explicit words first.
              const parts = rawKunci.split(/[,;]/).map(p => p.trim().toUpperCase());
              correctAnswer = parts.map(p => {
-               // Positives: B, Benar, Sesuai, True
-               if (['B', 'BENAR', 'SESUAI', 'TRUE', '1'].includes(p)) return true;
-               // Negatives: S, Salah, TS, Tidak Sesuai, False
+               if (['B', 'BENAR', 'SESUAI', 'TRUE', '1', 'T'].includes(p)) return true;
                if (['S', 'SALAH', 'TS', 'TIDAK SESUAI', 'FALSE', '0'].includes(p)) return false;
-               
-               // Default fallback if ambiguous 'S'
                if (p === 'S') return type === QuestionType.BenarSalah ? false : true;
                return false;
              });
@@ -84,22 +110,23 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
 
           return {
             id: `q_excel_${Date.now()}_${index}`,
-            order: parseInt(row[0]) || (index + 1),
+            order: order,
             type: type,
-            level: row[2] || 'L2',
-            material: row[3] || '',
-            text: row[4] || '',
-            image: row[5] || '',
-            options: [row[6], row[7], row[8], row[9], row[10]].filter(o => o !== undefined && o !== ""),
+            level: level,
+            material: material,
+            text: text,
+            image: image,
+            options: options,
+            optionImages: optionImages.length > 0 ? optionImages : undefined,
             correctAnswer: correctAnswer,
-            explanation: row[12] || '',
-            quizToken: String(row[13] || 'TOKEN').toUpperCase(),
-            subject: row[17] || 'Umum',
+            explanation: explanation,
+            quizToken: token,
+            subject: subject,
             phase: 'Fase C',
             isDeleted: false,
             createdAt: Date.now()
           };
-        }).filter((q: any) => q.text !== "");
+        }).filter((q: any) => q !== null && q.text !== "");
 
         resolve(questions);
       } catch (err) {
@@ -111,9 +138,6 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
   });
 };
 
-/**
- * Fungsi untuk mencetak Lembar Jawaban (LJK)
- */
 export const printAnswerSheet = (questions: EduCBTQuestion[], subject: string) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
@@ -274,18 +298,37 @@ export const downloadAnswerSheetPdf = async (questions: EduCBTQuestion[], subjec
   }
 };
 
-export const downloadExcelTemplate = () => {
+export const downloadExcelTemplate = (version: 1 | 2 = 1) => {
   // @ts-ignore
   const XLSX = window.XLSX;
-  const data = [
-    EXCEL_HEADERS,
-    [1, "Pilihan Ganda", "L2", "Sistem Pencernaan", "Apa fungsi lambung?", "", "Menyerap air", "Mencerna protein", "Menghasilkan empedu", "Menyimpan feses", "", "B", "Lambung menghasilkan pepsin untuk protein", "BIO1", 60, "Ya", "Ya", "Biologi"],
-    [2, "(Benar/Salah)", "L3", "Analisis", "Tentukan kebenaran pernyataan berikut!", "", "Pernyataan 1", "Pernyataan 2", "", "", "", "B, S", "Analisis...", "BIO1", 60, "Ya", "Ya", "Biologi"]
-  ];
+  let data: any[] = [];
+  
+  if (version === 1) {
+    data = [
+      EXCEL_HEADERS_V1,
+      [1, "Pilihan Ganda", "L2", "Sistem Pencernaan", "Apa fungsi lambung?", "", "Menyerap air", "Mencerna protein", "Menghasilkan empedu", "Menyimpan feses", "", "B", "Lambung menghasilkan pepsin untuk protein", "BIO1", 60, "Ya", "Ya", "Biologi"],
+      [2, "(Benar/Salah)", "L3", "Analisis", "Tentukan kebenaran pernyataan berikut!", "", "Pernyataan 1", "Pernyataan 2", "", "", "", "B, S", "Analisis...", "BIO1", 60, "Ya", "Ya", "Biologi"]
+    ];
+  } else {
+    data = [
+      EXCEL_HEADERS_V2,
+      [
+        1, "ID_001", "Pilihan Ganda", "Sedang", "Hasil dari 45.000 + 12.500 - 4.200 adalah ....", "", 
+        "53.200", "", "53.300", "", "54.300", "", "61.700", "", "", "", 
+        "B", "Langkah pengerjaan: ...", "ZXCMAT"
+      ],
+      [
+        2, "ID_002", "(Benar/Salah)", "Sedang", "Perhatikan pernyataan berikut.", "", 
+        "Pernyataan 1", "", "Pernyataan 2", "", "Pernyataan 3", "", "", "", "", "", 
+        "B, S, B", "Pembahasan...", "ZXCMAT"
+      ]
+    ];
+  }
+  
   const ws = XLSX.utils.aoa_to_sheet(data);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Template");
-  XLSX.writeFile(wb, "Template_EduExercise_Pro.xlsx");
+  XLSX.utils.book_append_sheet(wb, ws, `Template V${version}`);
+  XLSX.writeFile(wb, `Template_EduExercise_Pro_V${version}.xlsx`);
 };
 
 export const exportQuestionsToExcel = (questions: EduCBTQuestion[], examSettings: { duration: number; shuffleQuestions: boolean; shuffleOptions: boolean }) => {
@@ -308,7 +351,7 @@ export const exportQuestionsToExcel = (questions: EduCBTQuestion[], examSettings
       examSettings.shuffleQuestions ? "Ya" : "Tidak", examSettings.shuffleOptions ? "Ya" : "Tidak", q.subject || "Umum"
     ];
   });
-  const ws = XLSX.utils.aoa_to_sheet([EXCEL_HEADERS, ...formattedData]);
+  const ws = XLSX.utils.aoa_to_sheet([EXCEL_HEADERS_V1, ...formattedData]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Daftar Soal");
   XLSX.writeFile(wb, `Export_Soal_${Date.now()}.xlsx`);
