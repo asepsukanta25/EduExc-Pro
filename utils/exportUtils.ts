@@ -29,8 +29,8 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
         // @ts-ignore
         const jsonData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-        const rows = jsonData.slice(1);
         const headers = jsonData[0] as string[];
+        const rows = jsonData.slice(1);
         
         const isV2 = headers && (headers[1] === "ID Soal" || headers[4] === "Butir Pertanyaan");
 
@@ -41,8 +41,7 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
           let level = "L2";
           let text = "";
           let image = "";
-          let options: string[] = [];
-          let optionImages: (string | null)[] = [];
+          let rawOptions: { text: string, img: string | null, originalIdx: number }[] = [];
           let rawKunci = "";
           let explanation = "";
           let token = "TOKEN";
@@ -56,9 +55,22 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
             level = row[3] || 'L2';
             text = row[4] || '';
             image = row[5] || '';
-            // Ambil teks opsi dan gambar opsi secara berpasangan
-            options = [row[6], row[8], row[10], row[12], row[14]].map(o => o !== undefined ? String(o) : "");
-            optionImages = [row[7] || null, row[9] || null, row[11] || null, row[13] || null, row[15] || null];
+            
+            // Pasangkan teks dan gambar (A-E)
+            [
+              { t: row[6], i: row[7] },
+              { t: row[8], i: row[9] },
+              { t: row[10], i: row[11] },
+              { t: row[12], i: row[13] },
+              { t: row[14], i: row[15] }
+            ].forEach((pair, idx) => {
+              rawOptions.push({ 
+                text: pair.t !== undefined ? String(pair.t).trim() : "", 
+                img: pair.i ? String(pair.i).trim() : null,
+                originalIdx: idx 
+              });
+            });
+
             rawKunci = String(row[16] || '').trim();
             explanation = row[17] || '';
             token = String(row[18] || 'TOKEN').toUpperCase();
@@ -69,13 +81,27 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
             material = row[3] || '';
             text = row[4] || '';
             image = row[5] || '';
-            options = [row[6], row[7], row[8], row[9], row[10]].map(o => o !== undefined ? String(o) : "");
+            
+            [row[6], row[7], row[8], row[9], row[10]].forEach((t, idx) => {
+              rawOptions.push({ 
+                text: t !== undefined ? String(t).trim() : "", 
+                img: null,
+                originalIdx: idx 
+              });
+            });
+
             rawKunci = String(row[11] || '').trim();
             explanation = row[12] || '';
             token = String(row[13] || 'TOKEN').toUpperCase();
             subject = row[17] || 'Umum';
           }
 
+          // FILTER: Ambil opsi yang memiliki TEKS *ATAU* memiliki GAMBAR
+          const filteredPairs = rawOptions.filter(p => p.text !== "" || (p.img !== null && p.img !== ""));
+          const finalOptions = filteredPairs.map(p => p.text);
+          const finalOptionImages = filteredPairs.map(p => p.img);
+
+          // Normalize Type
           let type = QuestionType.PilihanGanda;
           if (typeStr.includes('Jamak') || typeStr.includes('MCMA')) type = QuestionType.MCMA;
           else if (typeStr.includes('Benar/Salah') || typeStr.includes('B/S')) type = QuestionType.BenarSalah;
@@ -83,25 +109,42 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
           else if (typeStr.toUpperCase().includes('ISIAN')) type = QuestionType.Isian;
           else if (typeStr.toUpperCase().includes('URAIAN')) type = QuestionType.Uraian;
 
+          // Parse Kunci dengan penyesuaian indeks setelah filtering
           let correctAnswer: any = rawKunci;
+          
           if (type === QuestionType.PilihanGanda) {
+            let oldIdx = -1;
             const charCode = rawKunci.toUpperCase().charCodeAt(0);
-            if (charCode >= 65 && charCode <= 69) correctAnswer = charCode - 65;
-            else correctAnswer = parseInt(rawKunci) || 0;
+            if (charCode >= 65 && charCode <= 69) oldIdx = charCode - 65;
+            else oldIdx = parseInt(rawKunci);
+
+            // Temukan indeks baru setelah filtering
+            const newIdx = filteredPairs.findIndex(p => p.originalIdx === oldIdx);
+            correctAnswer = newIdx !== -1 ? newIdx : 0;
+
           } else if (type === QuestionType.MCMA) {
              const parts = rawKunci.split(/[,;]/).map(p => p.trim().toUpperCase());
-             correctAnswer = parts.map(p => {
+             const oldIndices = parts.map(p => {
                const code = p.charCodeAt(0);
                return (code >= 65 && code <= 69) ? (code - 65) : parseInt(p);
              }).filter(p => !isNaN(p));
+
+             correctAnswer = oldIndices
+               .map(old => filteredPairs.findIndex(p => p.originalIdx === old))
+               .filter(idx => idx !== -1);
+
           } else if (type === QuestionType.BenarSalah || type === QuestionType.SesuaiTidakSesuai) {
              const parts = rawKunci.split(/[,;]/).map(p => p.trim().toUpperCase());
-             correctAnswer = parts.map(p => {
+             const bools = parts.map(p => {
                if (['B', 'BENAR', 'SESUAI', 'TRUE', '1', 'T'].includes(p)) return true;
                if (['S', 'SALAH', 'TS', 'TIDAK SESUAI', 'FALSE', '0'].includes(p)) return false;
                if (p === 'S') return type === QuestionType.BenarSalah ? false : true;
                return false;
              });
+             
+             // Sinkronkan jumlah boolean dengan jumlah opsi yang sudah difilter
+             correctAnswer = bools.slice(0, finalOptions.length);
+             while(correctAnswer.length < finalOptions.length) correctAnswer.push(false);
           }
 
           return {
@@ -112,8 +155,8 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
             material: material,
             text: text,
             image: image,
-            options: options,
-            optionImages: optionImages.length > 0 ? optionImages : undefined,
+            options: finalOptions,
+            optionImages: finalOptionImages.some(img => img !== null && img !== "") ? finalOptionImages : undefined,
             correctAnswer: correctAnswer,
             explanation: explanation,
             quizToken: token,
@@ -207,7 +250,11 @@ const generateAnswerSheetHtml = (questions: EduCBTQuestion[], subject: string) =
   if (pgQuestions.length > 0) {
     html += `<div class="section-title">I. PILIHAN GANDA / JAMAK</div><div class="grid-container">`;
     pgQuestions.forEach(q => {
-      html += `<div class="item-row"><div class="item-no">${q.order}.</div><div class="bubbles"><div class="bubble">A</div><div class="bubble">B</div><div class="bubble">C</div><div class="bubble">D</div><div class="bubble">E</div></div></div>`;
+      html += `<div class="item-row"><div class="item-no">${q.order}.</div><div class="bubbles">`;
+      q.options.forEach((_, optIdx) => {
+        html += `<div class="bubble">${String.fromCharCode(65 + optIdx)}</div>`;
+      });
+      html += `</div></div>`;
     });
     html += `</div>`;
   }
@@ -341,7 +388,6 @@ export const exportQuestionsToExcel = (questions: EduCBTQuestion[], examSettings
       kunci = (q.correctAnswer as boolean[]).map(val => val ? labels[0] : labels[1]).join(", ");
     }
     
-    // EXPORT MENGGUNAKAN FORMAT V2 AGAR SEMUA DATA TERANGKUT
     return [
       q.order || (i + 1), 
       q.id,
