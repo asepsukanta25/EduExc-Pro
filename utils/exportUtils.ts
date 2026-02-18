@@ -32,7 +32,6 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
         const rows = jsonData.slice(1);
         const headers = jsonData[0] as string[];
         
-        // Deteksi Versi berdasarkan Header atau Jumlah Kolom
         const isV2 = headers && (headers[1] === "ID Soal" || headers[4] === "Butir Pertanyaan");
 
         const questions: EduCBTQuestion[] = rows.map((row: any, index: number) => {
@@ -52,33 +51,31 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
           let order = index + 1;
 
           if (isV2) {
-            // FORMAT V2 (Berdasarkan Screenshot User)
             order = parseInt(row[0]) || (index + 1);
             typeStr = String(row[2] || '').trim();
             level = row[3] || 'L2';
             text = row[4] || '';
             image = row[5] || '';
-            options = [row[6], row[8], row[10], row[12], row[14]].filter(o => o !== undefined && o !== "");
+            // Ambil teks opsi dan gambar opsi secara berpasangan
+            options = [row[6], row[8], row[10], row[12], row[14]].map(o => o !== undefined ? String(o) : "");
             optionImages = [row[7] || null, row[9] || null, row[11] || null, row[13] || null, row[15] || null];
             rawKunci = String(row[16] || '').trim();
             explanation = row[17] || '';
             token = String(row[18] || 'TOKEN').toUpperCase();
           } else {
-            // FORMAT V1 (Template Lama)
             order = parseInt(row[0]) || (index + 1);
             typeStr = String(row[1] || '').trim();
             level = row[2] || 'L2';
             material = row[3] || '';
             text = row[4] || '';
             image = row[5] || '';
-            options = [row[6], row[7], row[8], row[9], row[10]].filter(o => o !== undefined && o !== "");
+            options = [row[6], row[7], row[8], row[9], row[10]].map(o => o !== undefined ? String(o) : "");
             rawKunci = String(row[11] || '').trim();
             explanation = row[12] || '';
             token = String(row[13] || 'TOKEN').toUpperCase();
             subject = row[17] || 'Umum';
           }
 
-          // Normalize Type
           let type = QuestionType.PilihanGanda;
           if (typeStr.includes('Jamak') || typeStr.includes('MCMA')) type = QuestionType.MCMA;
           else if (typeStr.includes('Benar/Salah') || typeStr.includes('B/S')) type = QuestionType.BenarSalah;
@@ -86,7 +83,6 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
           else if (typeStr.toUpperCase().includes('ISIAN')) type = QuestionType.Isian;
           else if (typeStr.toUpperCase().includes('URAIAN')) type = QuestionType.Uraian;
 
-          // Parse Kunci
           let correctAnswer: any = rawKunci;
           if (type === QuestionType.PilihanGanda) {
             const charCode = rawKunci.toUpperCase().charCodeAt(0);
@@ -313,14 +309,14 @@ export const downloadExcelTemplate = (version: 1 | 2 = 1) => {
     data = [
       EXCEL_HEADERS_V2,
       [
-        1, "ID_001", "Pilihan Ganda", "Sedang", "Hasil dari 45.000 + 12.500 - 4.200 adalah ....", "", 
-        "53.200", "", "53.300", "", "54.300", "", "61.700", "", "", "", 
-        "B", "Langkah pengerjaan: ...", "ZXCMAT"
+        1, "ID_001", "Pilihan Ganda", "Sedang", "Berapa hasil dari 45.000 + 5.000?", "", 
+        "50.000", "https://example.com/img_a.png", "40.000", "https://example.com/img_b.png", "60.000", "", "30.000", "", "", "", 
+        "A", "Penjelasan sederhana...", "TOKEN123"
       ],
       [
-        2, "ID_002", "(Benar/Salah)", "Sedang", "Perhatikan pernyataan berikut.", "", 
-        "Pernyataan 1", "", "Pernyataan 2", "", "Pernyataan 3", "", "", "", "", "", 
-        "B, S, B", "Pembahasan...", "ZXCMAT"
+        2, "ID_002", "(Benar/Salah)", "Sedang", "Cek kebenaran gambar di bawah!", "https://example.com/main_img.png", 
+        "Gambar ini adalah pohon", "https://example.com/tree.png", "Gambar ini adalah awan", "https://example.com/cloud.png", "", "", "", "", "", "", 
+        "B, S", "Analisis visual...", "TOKEN123"
       ]
     ];
   }
@@ -344,14 +340,26 @@ export const exportQuestionsToExcel = (questions: EduCBTQuestion[], examSettings
       const labels = q.type === QuestionType.BenarSalah ? ["B", "S"] : ["S", "TS"];
       kunci = (q.correctAnswer as boolean[]).map(val => val ? labels[0] : labels[1]).join(", ");
     }
+    
+    // EXPORT MENGGUNAKAN FORMAT V2 AGAR SEMUA DATA TERANGKUT
     return [
-      q.order || (i + 1), q.type, q.level, q.material, q.text, q.image || "",
-      q.options[0] || "", q.options[1] || "", q.options[2] || "", q.options[3] || "", q.options[4] || "",
-      kunci, q.explanation, q.quizToken, examSettings.duration,
-      examSettings.shuffleQuestions ? "Ya" : "Tidak", examSettings.shuffleOptions ? "Ya" : "Tidak", q.subject || "Umum"
+      q.order || (i + 1), 
+      q.id,
+      q.type, 
+      q.level, 
+      q.text, 
+      q.image || "",
+      q.options[0] || "", q.optionImages?.[0] || "",
+      q.options[1] || "", q.optionImages?.[1] || "",
+      q.options[2] || "", q.optionImages?.[2] || "",
+      q.options[3] || "", q.optionImages?.[3] || "",
+      q.options[4] || "", q.optionImages?.[4] || "",
+      kunci, 
+      q.explanation, 
+      q.quizToken
     ];
   });
-  const ws = XLSX.utils.aoa_to_sheet([EXCEL_HEADERS_V1, ...formattedData]);
+  const ws = XLSX.utils.aoa_to_sheet([EXCEL_HEADERS_V2, ...formattedData]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Daftar Soal");
   XLSX.writeFile(wb, `Export_Soal_${Date.now()}.xlsx`);

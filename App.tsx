@@ -89,7 +89,6 @@ const App: React.FC = () => {
     setIsCorrect(null);
     setShowExplanation(false);
     
-    // Initialize default answer structure based on type
     if (q.type === QuestionType.MCMA) setUserAnswer([]);
     else if (q.type === QuestionType.BenarSalah || q.type === QuestionType.SesuaiTidakSesuai) {
       setUserAnswer(new Array(q.options.length).fill(null));
@@ -429,7 +428,6 @@ const App: React.FC = () => {
                  <span className="px-5 py-2 bg-indigo-900 text-white rounded-full text-[11px] font-black uppercase tracking-[0.2em]">{q.type}</span>
                  <span className="px-5 py-2 bg-amber-100 text-amber-700 rounded-full text-[11px] font-black uppercase tracking-[0.2em]">LEVEL {q.level}</span>
               </div>
-              {/* Diubah dari font-bold ke font-medium */}
               <div className={`prose max-w-none font-medium text-slate-800 leading-relaxed transition-all duration-300 rich-content ${questionSizeClasses[questionZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
               {q.image && <div className="rounded-[3rem] border-8 border-slate-50 overflow-hidden shadow-2xl mt-12"><img src={q.image} className="w-full h-auto object-contain" alt="Stimulus" /></div>}
             </div>
@@ -443,7 +441,6 @@ const App: React.FC = () => {
                <button onClick={() => setOptionsZoom(Math.min(optionsSizeClasses.length - 1, optionsZoom + 1))} className="w-10 h-10 bg-white hover:bg-indigo-50 text-slate-600 rounded-xl font-black flex items-center justify-center border border-slate-200">A+</button>
             </div>
             <div className="lg:hidden space-y-6 mb-8 border-b pb-8">
-               {/* Diubah dari font-bold ke font-medium */}
                <div className={`prose font-medium text-slate-800 rich-content ${questionSizeClasses[questionZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
                {q.image && <img src={q.image} className="w-full h-auto rounded-2xl" />}
             </div>
@@ -463,10 +460,13 @@ const App: React.FC = () => {
                         const correctVal = Array.isArray(q.correctAnswer) ? q.correctAnswer[i] : null;
                         const userVal = Array.isArray(userAnswer) ? userAnswer[i] : null;
                         const isUserRowWrong = hasChecked && userVal !== null && userVal !== correctVal;
+                        const optImg = q.optionImages?.[i];
                         return (
                           <tr key={i} className={`border-b border-slate-50 last:border-0 transition-colors hover:bg-slate-50 ${isUserRowWrong ? 'bg-rose-50' : (hasChecked ? 'bg-emerald-50/20' : '')}`}>
-                            {/* Diubah dari font-bold ke font-normal */}
-                            <td className={`p-5 font-normal text-slate-700 transition-all duration-300 ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
+                            <td className="p-5">
+                               <div className={`font-normal text-slate-700 transition-all duration-300 ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
+                               {optImg && <img src={optImg} className="mt-3 max-h-40 rounded-xl border border-slate-100 shadow-sm" alt={`Pernyataan ${i+1}`} />}
+                            </td>
                             <td className="p-5 text-center">
                               <div className="flex gap-2 justify-center">
                                  <button disabled={hasChecked} onClick={() => { const next = [...(userAnswer || [])]; next[i] = true; setUserAnswer(next); }} className={`w-10 h-10 rounded-xl font-black text-xs transition-all border-2 ${userAnswer?.[i] === true ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'} ${hasChecked && correctVal === true ? 'ring-4 ring-emerald-500 ring-offset-2 !bg-emerald-600 !text-white !border-emerald-600' : ''}`}>{q.type === QuestionType.BenarSalah ? 'B' : 'S'}</button>
@@ -484,13 +484,20 @@ const App: React.FC = () => {
                  const isOptCorrect = (q.type === QuestionType.PilihanGanda && q.correctAnswer === i) || (q.type === QuestionType.MCMA && Array.isArray(q.correctAnswer) && q.correctAnswer.includes(i));
                  const isSelected = isMCMA ? (Array.isArray(userAnswer) && userAnswer.includes(i)) : userAnswer === i;
                  const isUserWrong = hasChecked && isSelected && !isOptCorrect;
+                 const optImg = q.optionImages?.[i];
                  return (
-                   <button key={i} disabled={hasChecked} onClick={() => { if (isMCMA) { const next = [...(userAnswer || [])]; if (next.includes(i)) setUserAnswer(next.filter(x => x !== i)); else setUserAnswer([...next, i]); } else { setUserAnswer(i); } }} className={`w-full text-left p-4 rounded-[1.5rem] border-4 flex items-center gap-4 transition-all duration-300 ${isSelected ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-white'} ${hasChecked && isOptCorrect ? 'bg-emerald-50 border-emerald-500 scale-[1.02] shadow-xl' : (isUserWrong ? 'bg-rose-50 border-rose-500' : 'bg-white shadow-sm')}`}>
-                      <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white' : (hasChecked && isOptCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400')}`}>
-                        {isMCMA ? (isSelected ? <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg> : <div className="w-5 h-5 border-2 border-slate-300 rounded-md"></div>) : <span className="text-base font-black">{String.fromCharCode(65+i)}</span>}
+                   <button key={i} disabled={hasChecked} onClick={() => { if (isMCMA) { const next = [...(userAnswer || [])]; if (next.includes(i)) setUserAnswer(next.filter(x => x !== i)); else setUserAnswer([...next, i]); } else { setUserAnswer(i); } }} className={`w-full text-left p-4 rounded-[1.5rem] border-4 flex flex-col gap-4 transition-all duration-300 ${isSelected ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-white'} ${hasChecked && isOptCorrect ? 'bg-emerald-50 border-emerald-500 scale-[1.02] shadow-xl' : (isUserWrong ? 'bg-rose-50 border-rose-500' : 'bg-white shadow-sm')}`}>
+                      <div className="flex items-center gap-4 w-full">
+                        <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white' : (hasChecked && isOptCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400')}`}>
+                          {isMCMA ? (isSelected ? <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg> : <div className="w-5 h-5 border-2 border-slate-300 rounded-md"></div>) : <span className="text-base font-black">{String.fromCharCode(65+i)}</span>}
+                        </div>
+                        <div className={`font-normal flex-grow transition-all duration-300 ${hasChecked && isOptCorrect ? 'text-emerald-900' : (isUserWrong ? 'text-rose-900' : 'text-slate-700')} ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
                       </div>
-                      {/* Diubah dari font-bold ke font-normal */}
-                      <div className={`font-normal flex-grow transition-all duration-300 ${hasChecked && isOptCorrect ? 'text-emerald-900' : (isUserWrong ? 'text-rose-900' : 'text-slate-700')} ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
+                      {optImg && (
+                        <div className="w-full pl-14">
+                          <img src={optImg} className="max-h-48 rounded-xl border border-slate-100 shadow-sm object-contain" alt={`Opsi ${String.fromCharCode(65+i)}`} />
+                        </div>
+                      )}
                    </button>
                  );
                })}

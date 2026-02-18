@@ -16,6 +16,7 @@ const ManualEntryForm: React.FC<Props> = ({ onAdd, defaultSubject, defaultPhase,
     level: 'L2',
     text: '',
     options: ['', '', '', '', ''],
+    optionImages: [null, null, null, null, null],
     correctAnswer: 0,
     explanation: '',
     material: '',
@@ -33,14 +34,14 @@ const ManualEntryForm: React.FC<Props> = ({ onAdd, defaultSubject, defaultPhase,
       id: `q_manual_${Date.now()}`,
       isDeleted: false,
       createdAt: Date.now(),
-      order: 1, // Default, will be handled by sorting in list
+      order: 1,
       options: q.options || [],
+      optionImages: q.optionImages || undefined,
       quizToken: q.quizToken?.toUpperCase() || "TOKEN"
     };
     
     onAdd(newQuestion);
-    // Reset partial form
-    setQ({ ...q, text: '', options: ['', '', '', '', ''], explanation: '' });
+    setQ({ ...q, text: '', options: ['', '', '', '', ''], optionImages: [null, null, null, null, null], explanation: '' });
     alert("Soal berhasil ditambahkan ke daftar!");
   };
 
@@ -95,44 +96,59 @@ const ManualEntryForm: React.FC<Props> = ({ onAdd, defaultSubject, defaultPhase,
         />
 
         {!isEssayType && (
-          <div className="space-y-3 pt-2">
+          <div className="space-y-4 pt-2">
             <label className="block text-[10px] font-black text-slate-500 uppercase">{isTableType ? 'Daftar Pernyataan' : 'Pilihan Jawaban'}</label>
             {q.options?.map((opt, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    if (q.type === QuestionType.PilihanGanda) setQ({...q, correctAnswer: i});
-                    else if (q.type === QuestionType.MCMA) {
-                      const current = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
-                      setQ({...q, correctAnswer: current.includes(i) ? current.filter(x => x !== i) : [...current, i]});
-                    } else if (isTableType) {
-                      const current = Array.isArray(q.correctAnswer) ? q.correctAnswer : [false, false, false, false, false];
-                      const next = [...current]; next[i] = !next[i];
-                      setQ({...q, correctAnswer: next});
-                    }
-                  }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border-2 transition-all ${
-                    (q.type === QuestionType.PilihanGanda && q.correctAnswer === i) || 
-                    (q.type === QuestionType.MCMA && Array.isArray(q.correctAnswer) && q.correctAnswer.includes(i)) ||
-                    (isTableType && Array.isArray(q.correctAnswer) && q.correctAnswer[i])
-                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-md' 
-                    : 'bg-white border-slate-200 text-slate-400'
-                  }`}
-                >
-                  {String.fromCharCode(65+i)}
-                </button>
-                <input 
-                  type="text" 
-                  className="flex-grow px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg text-xs font-bold"
-                  placeholder={`Opsi ${String.fromCharCode(65+i)}`}
-                  value={opt}
-                  onChange={(e) => {
-                    const next = [...(q.options || [])];
-                    next[i] = e.target.value;
-                    setQ({...q, options: next});
-                  }}
-                />
+              <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (q.type === QuestionType.PilihanGanda) setQ({...q, correctAnswer: i});
+                      else if (q.type === QuestionType.MCMA) {
+                        const current = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
+                        setQ({...q, correctAnswer: current.includes(i) ? current.filter(x => x !== i) : [...current, i]});
+                      } else if (isTableType) {
+                        const current = Array.isArray(q.correctAnswer) ? q.correctAnswer : [false, false, false, false, false];
+                        const next = [...current]; next[i] = !next[i];
+                        setQ({...q, correctAnswer: next});
+                      }
+                    }}
+                    className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-[10px] font-black border-2 transition-all ${
+                      (q.type === QuestionType.PilihanGanda && q.correctAnswer === i) || 
+                      (q.type === QuestionType.MCMA && Array.isArray(q.correctAnswer) && q.correctAnswer.includes(i)) ||
+                      (isTableType && Array.isArray(q.correctAnswer) && q.correctAnswer[i])
+                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-md' 
+                      : 'bg-white border-slate-200 text-slate-400'
+                    }`}
+                  >
+                    {String.fromCharCode(65+i)}
+                  </button>
+                  <input 
+                    type="text" 
+                    className="flex-grow px-3 py-1.5 bg-white text-slate-900 border border-slate-200 rounded-lg text-xs font-bold"
+                    placeholder={`Opsi ${String.fromCharCode(65+i)}`}
+                    value={opt}
+                    onChange={(e) => {
+                      const next = [...(q.options || [])];
+                      next[i] = e.target.value;
+                      setQ({...q, options: next});
+                    }}
+                  />
+                </div>
+                <div className="pl-11">
+                   <input 
+                    type="text" 
+                    className="w-full px-3 py-1.5 bg-white text-slate-900 border border-slate-200 rounded-lg text-[9px] font-bold"
+                    placeholder="URL Gambar Opsi (Opsional)"
+                    value={q.optionImages?.[i] || ''}
+                    onChange={(e) => {
+                      const nextImgs = [...(q.optionImages || [null, null, null, null, null])];
+                      nextImgs[i] = e.target.value || null;
+                      setQ({...q, optionImages: nextImgs});
+                    }}
+                  />
+                </div>
               </div>
             ))}
             <p className="text-[9px] text-slate-400 italic mt-1">* Klik huruf A-E untuk menandai jawaban yang BENAR.</p>

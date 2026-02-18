@@ -35,7 +35,6 @@ const QuestionList: React.FC<Props> = ({
     if (!text) return "";
     let html = text;
 
-    // 1. KaTeX
     // @ts-ignore
     if (window.katex) {
       html = html.replace(/\$\$(.*?)\$\$/gs, (match, formula) => {
@@ -52,7 +51,6 @@ const QuestionList: React.FC<Props> = ({
       });
     }
 
-    // 2. Markdown Tables
     const lines = html.split('\n');
     let inTable = false;
     let tableRows: string[] = [];
@@ -77,12 +75,10 @@ const QuestionList: React.FC<Props> = ({
     }
     html = processedLines.join('\n');
 
-    // 3. Markdown Basic
     html = html
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>');
     
-    // 4. Line Breaks
     html = html
       .replace(/\n\n\n/g, '<br/><br/><br/>')
       .replace(/\n\n/g, '<br/><br/>')
@@ -147,7 +143,6 @@ const QuestionList: React.FC<Props> = ({
             </div>
 
             <div className="p-6 space-y-5">
-              {/* Diubah dari font-medium ke font-normal */}
               <div className="prose prose-slate max-w-none text-slate-800 font-normal leading-relaxed rich-content" dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
               
               {q.image && !imgErrors[q.id] && (
@@ -164,12 +159,19 @@ const QuestionList: React.FC<Props> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {q.options.map((opt, i) => {
                     const isCorrect = isOptionCorrect(q, i);
+                    const optImg = q.optionImages?.[i];
                     return (
-                      <div key={i} className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${isCorrect ? 'bg-emerald-50 border-emerald-500/30' : 'bg-slate-50 border-slate-100'}`}>
-                        <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}>{String.fromCharCode(65+i)}</span>
-                        {/* Diubah dari font-bold ke font-normal */}
-                        <span className="text-xs font-normal text-slate-700" dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
-                        {isCorrect && <svg className="ml-auto w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
+                      <div key={i} className={`p-4 rounded-2xl border-2 flex flex-col items-start gap-3 transition-all ${isCorrect ? 'bg-emerald-50 border-emerald-500/30' : 'bg-slate-50 border-slate-100'}`}>
+                        <div className="flex items-center gap-4 w-full">
+                          <span className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}>{String.fromCharCode(65+i)}</span>
+                          <span className="text-xs font-normal text-slate-700 flex-grow" dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
+                          {isCorrect && <svg className="ml-auto w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                        {optImg && (
+                          <div className="w-full mt-2 rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                            <img src={optImg} className="max-w-full h-auto object-contain mx-auto max-h-[120px]" alt={`Opsi ${String.fromCharCode(65+i)}`} />
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -181,7 +183,6 @@ const QuestionList: React.FC<Props> = ({
                   <div className="bg-amber-100 p-1 rounded-lg"><svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
                   <div>
                     <span className="font-black uppercase block mb-1 text-[9px] tracking-wider text-amber-700">Analisis Pakar:</span>
-                    {/* Diubah dari font-medium ke font-normal */}
                     <div className="text-[10px] font-normal text-amber-800 leading-relaxed italic explanation-text" dangerouslySetInnerHTML={{ __html: formatRichText(q.explanation) }}></div>
                   </div>
                 </div>
