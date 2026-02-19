@@ -13,7 +13,7 @@ export const EXCEL_HEADERS_V2 = [
   "Opsi A", "Gambar Opsi A (URL)", "Opsi B", "Gambar Opsi B (URL)", 
   "Opsi C", "Gambar Opsi C (URL)", "Opsi D", "Gambar Opsi D (URL)", 
   "Opsi E", "Gambar Opsi E (URL)", 
-  "Kunci Jawaban", "Pembahasan", "Token"
+  "Kunci Jawaban", "Pembahasan", "Token", "Mata Pelajaran"
 ];
 
 export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuestion[]> => {
@@ -74,6 +74,7 @@ export const importQuestionsFromExcel = async (file: File): Promise<EduCBTQuesti
             rawKunci = String(row[16] || '').trim();
             explanation = row[17] || '';
             token = String(row[18] || 'TOKEN').toUpperCase();
+            subject = row[19] || 'Umum';
           } else {
             order = parseInt(row[0]) || (index + 1);
             typeStr = String(row[1] || '').trim();
@@ -358,12 +359,12 @@ export const downloadExcelTemplate = (version: 1 | 2 = 1) => {
       [
         1, "ID_001", "Pilihan Ganda", "Sedang", "Berapa hasil dari 45.000 + 5.000?", "", 
         "50.000", "https://example.com/img_a.png", "40.000", "https://example.com/img_b.png", "60.000", "", "30.000", "", "", "", 
-        "A", "Penjelasan sederhana...", "TOKEN123"
+        "A", "Penjelasan sederhana...", "TOKEN123", "Matematika"
       ],
       [
         2, "ID_002", "(Benar/Salah)", "Sedang", "Cek kebenaran gambar di bawah!", "https://example.com/main_img.png", 
         "Gambar ini adalah pohon", "https://example.com/tree.png", "Gambar ini adalah awan", "https://example.com/cloud.png", "", "", "", "", "", "", 
-        "B, S", "Analisis visual...", "TOKEN123"
+        "B, S", "Analisis visual...", "TOKEN123", "IPA"
       ]
     ];
   }
@@ -371,7 +372,7 @@ export const downloadExcelTemplate = (version: 1 | 2 = 1) => {
   const ws = XLSX.utils.aoa_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `Template V${version}`);
-  XLSX.writeFile(wb, `Template_EduExercise_Pro_V${version}.xlsx`);
+  XLSX.writeFile(wb, `Template_E-Pro_EXE_V${version}.xlsx`);
 };
 
 export const exportQuestionsToExcel = (questions: EduCBTQuestion[], examSettings: { duration: number; shuffleQuestions: boolean; shuffleOptions: boolean }) => {
@@ -402,7 +403,8 @@ export const exportQuestionsToExcel = (questions: EduCBTQuestion[], examSettings
       q.options[4] || "", q.optionImages?.[4] || "",
       kunci, 
       q.explanation, 
-      q.quizToken
+      q.quizToken,
+      q.subject || "Umum"
     ];
   });
   const ws = XLSX.utils.aoa_to_sheet([EXCEL_HEADERS_V2, ...formattedData]);

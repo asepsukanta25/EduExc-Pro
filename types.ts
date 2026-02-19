@@ -19,6 +19,7 @@ export type EduCBTQuestion = {
   explanation: string;
   options: string[];
   correctAnswer: any;
+  optionsDisplay?: 'list' | 'grid'; // New property for layout control
   tfLabels?: {
     true: string;
     false: string;

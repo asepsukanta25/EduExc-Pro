@@ -33,10 +33,12 @@ const App: React.FC = () => {
   const [userAnswer, setUserAnswer] = useState<any>(null);
   const [hasChecked, setHasChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [globalLayout, setGlobalLayout] = useState<'list' | 'grid'>('list');
 
-  // Text Zoom States
+  // Zoom States
   const [questionZoom, setQuestionZoom] = useState(2); 
   const [optionsZoom, setOptionsZoom] = useState(2); 
+  const [imageZoom, setImageZoom] = useState(1); // 1 = 100%, 1.5 = 150%, etc.
 
   const questionSizeClasses = ["text-lg", "text-xl", "text-2xl", "text-3xl", "text-4xl", "text-5xl"];
   const optionsSizeClasses = ["text-base", "text-lg", "text-xl", "text-2xl", "text-3xl", "text-4xl"];
@@ -278,7 +280,7 @@ const App: React.FC = () => {
 
       {showAdminLogin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4">
-          <div className="bg-white p-10 rounded-[2.5rem] w-full max-w-sm shadow-2xl animate-slide-in">
+          <div className="bg-white p-10 rounded-[2.5rem] w-full max-sm shadow-2xl animate-slide-in">
             <h3 className="text-2xl font-black mb-6 text-slate-900 uppercase tracking-tight">Admin Gate</h3>
             <form onSubmit={handleAdminLogin} className="space-y-6">
               <input autoFocus type="password" placeholder="Key Code" className="w-full p-5 bg-slate-50 border-2 rounded-2xl font-black text-center text-xl tracking-[0.3em]" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} />
@@ -294,7 +296,7 @@ const App: React.FC = () => {
         <div className="flex items-center gap-3 mb-12">
            <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-3xl font-black text-white shadow-2xl">E</div>
            <div className="text-left">
-             <h1 className="text-4xl font-black text-white uppercase tracking-tighter">EduExercise Pro</h1>
+             <h1 className="text-4xl font-black text-white uppercase tracking-tighter">E-Pro EXE</h1>
              <p className="text-indigo-400 font-bold text-xs uppercase tracking-widest">Classroom AI Suite</p>
            </div>
         </div>
@@ -304,7 +306,7 @@ const App: React.FC = () => {
              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Masukkan Token Latihan</p>
            </div>
            <div className="max-w-md mx-auto space-y-4">
-             <input type="text" placeholder="INPUT TOKEN" className="w-full p-6 bg-slate-50 border-4 border-slate-100 rounded-[2rem] font-black text-center text-3xl uppercase tracking-[0.5em] focus:border-indigo-500 transition-all outline-none" value={activeToken} onChange={e => setActiveToken(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && handleStartExercise()} />
+             <input type="text" placeholder="TOKEN" className="w-full p-6 bg-slate-50 border-4 border-slate-100 rounded-[2rem] font-black text-center text-3xl uppercase tracking-[0.5em] focus:border-indigo-500 transition-all outline-none" value={activeToken} onChange={e => setActiveToken(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && handleStartExercise()} />
              <button onClick={handleStartExercise} className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-lg uppercase tracking-widest shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all">Buka Sesi Belajar</button>
            </div>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto pt-6 border-t border-slate-100">
@@ -375,6 +377,10 @@ const App: React.FC = () => {
     const isEssay = q.type === QuestionType.Isian || q.type === QuestionType.Uraian;
     const isTable = q.type === QuestionType.BenarSalah || q.type === QuestionType.SesuaiTidakSesuai;
     const isMCMA = q.type === QuestionType.MCMA;
+    
+    // Grid logic: prioritize global toggle or per-question setting
+    const isGrid = (globalLayout === 'grid' || q.optionsDisplay === 'grid') && !isEssay && !isTable;
+
     return (
       <div className={`min-h-screen bg-white flex flex-col overflow-hidden ${isResizing ? 'select-none cursor-col-resize' : ''}`}>
         {showNavDrawer && (
@@ -398,38 +404,75 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
-        <header className="bg-white border-b px-8 py-5 flex justify-between items-center z-50">
+        <header className="bg-white border-b px-8 py-4 flex justify-between items-center z-50 shadow-sm">
           <div className="flex items-center gap-6">
-            <button onClick={() => setShowNavDrawer(true)} className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-indigo-100 transition-all">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <button onClick={() => setShowNavDrawer(true)} className="p-3 bg-slate-100 text-slate-600 rounded-2xl hover:bg-indigo-100 transition-all">
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{q.subject}</h1>
-              <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest">{q.quizToken} • SOAL {currentQuestionIndex + 1} DARI {displayQuestions.length}</p>
+              <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">{q.subject}</h1>
+              <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{q.quizToken} • SOAL {currentQuestionIndex + 1} / {displayQuestions.length}</p>
             </div>
           </div>
+          
           <div className="flex items-center gap-3">
-            <button onClick={toggleFullscreen} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Layar Penuh">
+            {/* Global Layout Toggle */}
+            <div className="flex bg-slate-100 p-1 rounded-xl mr-2">
+               <button 
+                 onClick={() => setGlobalLayout('list')}
+                 className={`p-2 rounded-lg transition-all ${globalLayout === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                 title="Tampilan Vertikal"
+               >
+                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16"/></svg>
+               </button>
+               <button 
+                 onClick={() => setGlobalLayout('grid')}
+                 className={`p-2 rounded-lg transition-all ${globalLayout === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                 title="Tampilan Grid (Berdampingan)"
+               >
+                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h7M4 12h7M4 18h7M15 6h5M15 12h5M15 18h5"/></svg>
+               </button>
+            </div>
+
+            <button onClick={toggleFullscreen} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Layar Penuh">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {isFullscreen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10V4m0 0L4 9m5-5l5 5M15 14v6m0 0l5-5m-5 5l-5-5" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />}
               </svg>
             </button>
-            <button onClick={() => setView('landing')} className="px-8 py-3 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-100 transition-all">Keluar</button>
+            <button onClick={() => setView('landing')} className="px-6 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-rose-100 transition-all">Keluar</button>
           </div>
         </header>
         <main className="flex-grow flex flex-col lg:flex-row overflow-hidden relative">
           <div style={{ width: `${splitWidth}%` }} className="hidden lg:block overflow-y-auto p-8 md:p-12 lg:p-16 border-r border-slate-100 relative group/left">
-            <div className="absolute top-6 right-8 flex gap-2 opacity-0 group-hover/left:opacity-100 transition-opacity z-10">
-               <button onClick={() => setQuestionZoom(Math.max(0, questionZoom - 1))} className="w-10 h-10 bg-slate-100 hover:bg-indigo-100 text-slate-600 rounded-xl font-black flex items-center justify-center border border-slate-200">A-</button>
-               <button onClick={() => setQuestionZoom(Math.min(questionSizeClasses.length - 1, questionZoom + 1))} className="w-10 h-10 bg-slate-100 hover:bg-indigo-100 text-slate-600 rounded-xl font-black flex items-center justify-center border border-slate-200">A+</button>
+            <div className="absolute top-6 right-8 flex flex-col gap-2 opacity-0 group-hover/left:opacity-100 transition-opacity z-10">
+               {/* Question Zoom Controls */}
+               <div className="flex gap-1 bg-white/90 backdrop-blur p-1 rounded-xl shadow-lg border border-slate-200">
+                  <button onClick={() => setQuestionZoom(Math.max(0, questionZoom - 1))} className="w-10 h-10 bg-slate-100 hover:bg-indigo-100 text-slate-600 rounded-xl font-black flex items-center justify-center border border-slate-200" title="Kecilkan Teks">A-</button>
+                  <button onClick={() => setQuestionZoom(Math.min(questionSizeClasses.length - 1, questionZoom + 1))} className="w-10 h-10 bg-slate-100 hover:bg-indigo-100 text-slate-600 rounded-xl font-black flex items-center justify-center border border-slate-200" title="Besarkan Teks">A+</button>
+               </div>
+               {/* Image Zoom Controls */}
+               <div className="flex gap-1 bg-white/90 backdrop-blur p-1 rounded-xl shadow-lg border border-slate-200">
+                  <button onClick={() => setImageZoom(Math.max(0.5, imageZoom - 0.25))} className="w-10 h-10 bg-slate-100 hover:bg-amber-100 text-slate-600 rounded-xl font-black flex items-center justify-center border border-slate-200" title="Kecilkan Gambar">🖼️-</button>
+                  <button onClick={() => setImageZoom(Math.min(3.0, imageZoom + 0.25))} className="w-10 h-10 bg-slate-100 hover:bg-amber-100 text-slate-600 rounded-xl font-black flex items-center justify-center border border-slate-200" title="Besarkan Gambar">🖼️+</button>
+               </div>
             </div>
             <div className="max-w-4xl mx-auto space-y-10">
               <div className="flex items-center gap-3">
                  <span className="px-5 py-2 bg-indigo-900 text-white rounded-full text-[11px] font-black uppercase tracking-[0.2em]">{q.type}</span>
                  <span className="px-5 py-2 bg-amber-100 text-amber-700 rounded-full text-[11px] font-black uppercase tracking-[0.2em]">LEVEL {q.level}</span>
+                 {imageZoom !== 1 && (
+                   <span className="px-5 py-2 bg-slate-900 text-white rounded-full text-[11px] font-black uppercase tracking-[0.2em]">ZOOM GAMBAR: {Math.round(imageZoom * 100)}%</span>
+                 )}
               </div>
               <div className={`prose max-w-none font-medium text-slate-800 leading-relaxed transition-all duration-300 rich-content ${questionSizeClasses[questionZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
-              {q.image && <div className="rounded-[3rem] border-8 border-slate-50 overflow-hidden shadow-2xl mt-12"><img src={q.image} className="w-full h-auto object-contain" alt="Stimulus" /></div>}
+              {q.image && (
+                <div 
+                  className="rounded-[3rem] border-8 border-slate-50 overflow-hidden shadow-2xl mt-12 transition-all duration-500 origin-top"
+                  style={{ transform: `scale(${imageZoom})`, maxWidth: `${100 / imageZoom}%` }}
+                >
+                  <img src={q.image} className="w-full h-auto object-contain" alt="Stimulus" />
+                </div>
+              )}
             </div>
           </div>
           <div onMouseDown={startResizing} className={`hidden lg:flex w-2 bg-slate-50 cursor-col-resize hover:bg-indigo-500/20 transition-all group items-center justify-center relative z-20 ${isResizing ? 'bg-indigo-600' : ''}`}>
@@ -442,7 +485,8 @@ const App: React.FC = () => {
             </div>
             <div className="lg:hidden space-y-6 mb-8 border-b pb-8">
                <div className={`prose font-medium text-slate-800 rich-content ${questionSizeClasses[questionZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(q.text) }}></div>
-               {q.image && <img src={q.image} className="w-full h-auto rounded-2xl" />}
+               {/* Fix: CSS property 'origin' changed to 'transformOrigin' for React style compatibility */}
+               {q.image && <img src={q.image} className="w-full h-auto rounded-2xl" style={{ transform: `scale(${imageZoom})`, transformOrigin: 'top left' }} />}
             </div>
             <div className="space-y-4">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Pilihan Jawaban</h3>
@@ -465,7 +509,14 @@ const App: React.FC = () => {
                           <tr key={i} className={`border-b border-slate-50 last:border-0 transition-colors hover:bg-slate-50 ${isUserRowWrong ? 'bg-rose-50' : (hasChecked ? 'bg-emerald-50/20' : '')}`}>
                             <td className="p-5">
                                <div className={`font-normal text-slate-700 transition-all duration-300 ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
-                               {optImg && <img src={optImg} className="mt-3 max-h-40 rounded-xl border border-slate-100 shadow-sm" alt={`Pernyataan ${i+1}`} />}
+                               {optImg && (
+                                 <div 
+                                   className="mt-3 overflow-hidden origin-top-left transition-all duration-300"
+                                   style={{ transform: `scale(${imageZoom})`, maxWidth: `${100 / imageZoom}%` }}
+                                 >
+                                    <img src={optImg} className="max-h-40 rounded-xl border border-slate-100 shadow-sm" alt={`Pernyataan ${i+1}`} />
+                                 </div>
+                               )}
                             </td>
                             <td className="p-5 text-center">
                               <div className="flex gap-2 justify-center">
@@ -480,27 +531,34 @@ const App: React.FC = () => {
                   </table>
                 </div>
               )}
-              {(!isEssay && !isTable) && q.options.map((opt, i) => {
-                 const isOptCorrect = (q.type === QuestionType.PilihanGanda && q.correctAnswer === i) || (q.type === QuestionType.MCMA && Array.isArray(q.correctAnswer) && q.correctAnswer.includes(i));
-                 const isSelected = isMCMA ? (Array.isArray(userAnswer) && userAnswer.includes(i)) : userAnswer === i;
-                 const isUserWrong = hasChecked && isSelected && !isOptCorrect;
-                 const optImg = q.optionImages?.[i];
-                 return (
-                   <button key={i} disabled={hasChecked} onClick={() => { if (isMCMA) { const next = [...(userAnswer || [])]; if (next.includes(i)) setUserAnswer(next.filter(x => x !== i)); else setUserAnswer([...next, i]); } else { setUserAnswer(i); } }} className={`w-full text-left p-4 rounded-[1.5rem] border-4 flex flex-col gap-4 transition-all duration-300 ${isSelected ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-white'} ${hasChecked && isOptCorrect ? 'bg-emerald-50 border-emerald-500 scale-[1.02] shadow-xl' : (isUserWrong ? 'bg-rose-50 border-rose-500' : 'bg-white shadow-sm')}`}>
-                      <div className="flex items-center gap-4 w-full">
-                        <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white' : (hasChecked && isOptCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400')}`}>
-                          {isMCMA ? (isSelected ? <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg> : <div className="w-5 h-5 border-2 border-slate-300 rounded-md"></div>) : <span className="text-base font-black">{String.fromCharCode(65+i)}</span>}
-                        </div>
-                        <div className={`font-normal flex-grow transition-all duration-300 ${hasChecked && isOptCorrect ? 'text-emerald-900' : (isUserWrong ? 'text-rose-900' : 'text-slate-700')} ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
-                      </div>
-                      {optImg && (
-                        <div className="w-full pl-14">
-                          <img src={optImg} className="max-h-48 rounded-xl border border-slate-100 shadow-sm object-contain" alt={`Opsi ${String.fromCharCode(65+i)}`} />
-                        </div>
-                      )}
-                   </button>
-                 );
-               })}
+              {(!isEssay && !isTable) && (
+                <div className={isGrid ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "space-y-4"}>
+                  {q.options.map((opt, i) => {
+                    const isOptCorrect = (q.type === QuestionType.PilihanGanda && q.correctAnswer === i) || (q.type === QuestionType.MCMA && Array.isArray(q.correctAnswer) && q.correctAnswer.includes(i));
+                    const isSelected = isMCMA ? (Array.isArray(userAnswer) && userAnswer.includes(i)) : userAnswer === i;
+                    const isUserWrong = hasChecked && isSelected && !isOptCorrect;
+                    const optImg = q.optionImages?.[i];
+                    return (
+                      <button key={i} disabled={hasChecked} onClick={() => { if (isMCMA) { const next = [...(userAnswer || [])]; if (next.includes(i)) setUserAnswer(next.filter(x => x !== i)); else setUserAnswer([...next, i]); } else { setUserAnswer(i); } }} className={`w-full text-left p-4 rounded-[1.5rem] border-4 flex flex-col gap-4 transition-all duration-300 ${isSelected ? 'border-indigo-600 ring-4 ring-indigo-50' : 'border-white'} ${hasChecked && isOptCorrect ? 'bg-emerald-50 border-emerald-500 scale-[1.02] shadow-xl' : (isUserWrong ? 'bg-rose-50 border-rose-500' : 'bg-white shadow-sm')}`}>
+                          <div className="flex items-center gap-4 w-full">
+                            <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white' : (hasChecked && isOptCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400')}`}>
+                              {isMCMA ? (isSelected ? <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg> : <div className="w-5 h-5 border-2 border-slate-300 rounded-md"></div>) : <span className="text-base font-black">{String.fromCharCode(65+i)}</span>}
+                            </div>
+                            <div className={`font-normal flex-grow transition-all duration-300 ${hasChecked && isOptCorrect ? 'text-emerald-900' : (isUserWrong ? 'text-rose-900' : 'text-slate-700')} ${optionsSizeClasses[optionsZoom]}`} dangerouslySetInnerHTML={{ __html: formatRichText(opt) }} />
+                          </div>
+                          {optImg && (
+                            <div 
+                              className="w-full pl-14 overflow-hidden origin-top-left transition-all duration-300"
+                              style={{ transform: `scale(${imageZoom})`, maxWidth: `${100 / imageZoom}%` }}
+                            >
+                              <img src={optImg} className="max-h-48 rounded-xl border border-slate-100 shadow-sm object-contain" alt={`Opsi ${String.fromCharCode(65+i)}`} />
+                            </div>
+                          )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
                {isEssay && (
                  <div className="space-y-6">
                     {q.type === QuestionType.Isian ? (

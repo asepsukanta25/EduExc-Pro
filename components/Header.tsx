@@ -34,7 +34,7 @@ const Header: React.FC = () => {
             </svg>
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">EduExercise Pro</h1>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">E-Pro EXE</h1>
             <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-widest mt-1">Classroom Discussion Suite</p>
           </div>
         </div>

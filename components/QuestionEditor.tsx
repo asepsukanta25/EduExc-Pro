@@ -13,6 +13,7 @@ interface Props {
 const QuestionEditor: React.FC<Props> = ({ question, onSave, onClose }) => {
   const [edited, setEdited] = useState<EduCBTQuestion>(({ 
     ...question,
+    optionsDisplay: question.optionsDisplay || 'list',
     optionImages: question.optionImages || new Array(question.options.length).fill(null),
     tfLabels: question.tfLabels || (question.type === QuestionType.BenarSalah ? { true: 'Benar', false: 'Salah' } : (question.type === QuestionType.SesuaiTidakSesuai ? { true: 'Sesuai', false: 'Tidak Sesuai' } : undefined))
   }));
@@ -111,6 +112,14 @@ const QuestionEditor: React.FC<Props> = ({ question, onSave, onClose }) => {
               </div>
               <ImageControl label="Gambar Stimulus (URL / HTML)" currentImage={edited.image} onImageChange={(img) => setEdited({...edited, image: img})} />
               
+              <div className="bg-indigo-50 p-6 rounded-[2.5rem] border border-indigo-100 shadow-sm">
+                <label className="block text-[10px] font-black uppercase text-indigo-700 mb-3 tracking-widest">Tampilan Opsi (Exercise View)</label>
+                <div className="flex bg-white p-1 rounded-xl border border-indigo-200">
+                  <button onClick={() => setEdited({...edited, optionsDisplay: 'list'})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${edited.optionsDisplay === 'list' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}>Vertical (List)</button>
+                  <button onClick={() => setEdited({...edited, optionsDisplay: 'grid'})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${edited.optionsDisplay === 'grid' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}>Grid (2 Kolom)</button>
+                </div>
+              </div>
+
               {isEssayType && (
                 <div className="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-100 shadow-sm">
                   <label className="block text-[10px] font-black uppercase text-emerald-700 mb-3 tracking-widest">Kunci Jawaban (Pedoman Penskoran)</label>
