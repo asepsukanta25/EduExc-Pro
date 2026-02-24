@@ -148,17 +148,16 @@ const App: React.FC = () => {
   const handleSyncToSupabase = async () => {
     const client = getSupabase();
     if (!client) {
-      alert("Konfigurasi Supabase belum lengkap. Periksa Environment Variables Anda.");
+      alert("Konfigurasi Supabase belum lengkap. Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY sudah diatur.");
       return;
     }
 
     setLoading(true);
     try {
-      // Ambil data lokal yang belum ada di supabase (id diawali 'res_')
       const localOnly = resources.filter(r => r.id.startsWith('res_'));
       
       if (localOnly.length === 0) {
-        alert("Semua data sudah tersinkronisasi.");
+        alert("Tidak ada data lokal baru untuk dikirim.");
         return;
       }
 
@@ -169,36 +168,49 @@ const App: React.FC = () => {
         type: r.type
       }));
 
-      const { data, error } = await client
+      const { error } = await client
         .from('resources')
-        .insert(toInsert)
-        .select();
+        .insert(toInsert);
 
       if (error) throw error;
 
-      if (data) {
-        // Refresh data dari server
-        const { data: allData } = await client
-          .from('resources')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (allData) {
-          const mappedData: DownloadResource[] = allData.map(item => ({
-            id: item.id,
-            title: item.title,
-            description: item.description,
-            url: item.url,
-            type: item.type,
-            createdAt: new Date(item.created_at).getTime()
-          }));
-          setResources(mappedData);
-          alert(`Berhasil menyinkronkan ${localOnly.length} data ke Supabase!`);
-        }
-      }
+      await handlePullFromSupabase();
+      alert(`Berhasil mengirim ${localOnly.length} data ke Supabase!`);
     } catch (error) {
       console.error("Sync error:", error);
-      alert("Gagal sinkronisasi. Pastikan tabel 'resources' sudah dibuat di Supabase.");
+      alert("Gagal mengirim data. Periksa koneksi atau tabel database Anda.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePullFromSupabase = async () => {
+    const client = getSupabase();
+    if (!client) return;
+
+    setLoading(true);
+    try {
+      const { data, error } = await client
+        .from('resources')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+
+      if (data) {
+        const mappedData: DownloadResource[] = data.map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          url: item.url,
+          type: item.type,
+          createdAt: new Date(item.created_at).getTime()
+        }));
+        setResources(mappedData);
+        localStorage.setItem('epro_resources', JSON.stringify(mappedData));
+      }
+    } catch (error) {
+      console.error("Pull error:", error);
     } finally {
       setLoading(false);
     }
@@ -927,14 +939,26 @@ const App: React.FC = () => {
                     <Download className="w-5 h-5 text-indigo-600" />
                     <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Manajemen Link Unduhan</h3>
                   </div>
-                  <button 
-                    onClick={handleSyncToSupabase}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-200 transition-all disabled:opacity-50"
-                  >
-                    <svg className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    {loading ? 'Sinkronisasi...' : 'Sinkron ke Cloud'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={handlePullFromSupabase}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all disabled:opacity-50"
+                      title="Ambil data terbaru dari Supabase"
+                    >
+                      <svg className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                      Tarik
+                    </button>
+                    <button 
+                      onClick={handleSyncToSupabase}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-3 py-2 bg-amber-100 text-amber-700 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-200 transition-all disabled:opacity-50"
+                      title="Kirim data lokal ke Supabase"
+                    >
+                      <svg className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                      Kirim
+                    </button>
+                  </div>
                 </div>
                 <form onSubmit={(e) => {
                   e.preventDefault();
