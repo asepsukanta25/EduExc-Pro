@@ -145,6 +145,65 @@ const App: React.FC = () => {
     setResources(prev => prev.filter(r => r.id !== id));
   };
 
+  const handleSyncToSupabase = async () => {
+    const client = getSupabase();
+    if (!client) {
+      alert("Konfigurasi Supabase belum lengkap. Periksa Environment Variables Anda.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Ambil data lokal yang belum ada di supabase (id diawali 'res_')
+      const localOnly = resources.filter(r => r.id.startsWith('res_'));
+      
+      if (localOnly.length === 0) {
+        alert("Semua data sudah tersinkronisasi.");
+        return;
+      }
+
+      const toInsert = localOnly.map(r => ({
+        title: r.title,
+        description: r.description,
+        url: r.url,
+        type: r.type
+      }));
+
+      const { data, error } = await client
+        .from('resources')
+        .insert(toInsert)
+        .select();
+
+      if (error) throw error;
+
+      if (data) {
+        // Refresh data dari server
+        const { data: allData } = await client
+          .from('resources')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (allData) {
+          const mappedData: DownloadResource[] = allData.map(item => ({
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            url: item.url,
+            type: item.type,
+            createdAt: new Date(item.created_at).getTime()
+          }));
+          setResources(mappedData);
+          alert(`Berhasil menyinkronkan ${localOnly.length} data ke Supabase!`);
+        }
+      }
+    } catch (error) {
+      console.error("Sync error:", error);
+      alert("Gagal sinkronisasi. Pastikan tabel 'resources' sudah dibuat di Supabase.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const activeQuestionsSorted = useMemo(() => 
     questions.filter(q => !q.isDeleted).sort((a,b) => a.order - b.order), 
   [questions]);
@@ -863,9 +922,19 @@ const App: React.FC = () => {
             {adminMode === 'ai' && <GenerationForm onGenerate={async (c) => { setLoading(true); try { const r = await generateEduCBTQuestions(c); setQuestions(p => [...p, ...r]); setActiveToken(c.quizToken.toUpperCase()); } finally {setLoading(false);} }} onImportJson={(imported) => setQuestions(prev => [...prev, ...imported])} isLoading={loading} examSettings={exerciseSettings} setExamSettings={setExerciseSettings} />}
             {adminMode === 'downloads' && (
               <div className="space-y-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <Download className="w-5 h-5 text-indigo-600" />
-                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Manajemen Link Unduhan</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Download className="w-5 h-5 text-indigo-600" />
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Manajemen Link Unduhan</h3>
+                  </div>
+                  <button 
+                    onClick={handleSyncToSupabase}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-200 transition-all disabled:opacity-50"
+                  >
+                    <svg className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    {loading ? 'Sinkronisasi...' : 'Sinkron ke Cloud'}
+                  </button>
                 </div>
                 <form onSubmit={(e) => {
                   e.preventDefault();
