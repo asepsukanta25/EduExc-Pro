@@ -145,6 +145,12 @@ const App: React.FC = () => {
     setResources(prev => prev.filter(r => r.id !== id));
   };
 
+  useEffect(() => {
+    if (view === 'admin') {
+      handlePullFromSupabase();
+    }
+  }, [view]);
+
   const handleSyncToSupabase = async () => {
     const client = getSupabase();
     if (!client) {
@@ -938,6 +944,16 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <Download className="w-5 h-5 text-indigo-600" />
                     <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Manajemen Link Unduhan</h3>
+                    {getSupabase() ? (
+                      <span className="flex items-center gap-1 text-[8px] font-black text-emerald-500 uppercase bg-emerald-50 px-2 py-0.5 rounded-full">
+                        <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
+                        Terhubung
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[8px] font-black text-rose-500 uppercase bg-rose-50 px-2 py-0.5 rounded-full">
+                        Terputus
+                      </span>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button 
