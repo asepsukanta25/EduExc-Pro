@@ -5,15 +5,19 @@ import GenerationForm from './components/GenerationForm';
 import ManualEntryForm from './components/ManualEntryForm';
 import QuestionList from './components/QuestionList';
 import QuestionEditor from './components/QuestionEditor';
-import { EduCBTQuestion, QuestionType } from './types';
+import { EduCBTQuestion, QuestionType, DownloadResource } from './types';
 import { generateEduCBTQuestions, repairQuestionOptions, generateTeachingMaterial } from './geminiService';
+import { getSupabase } from './supabaseClient';
 import { exportQuestionsToExcel, downloadExcelTemplate, importQuestionsFromExcel, printAnswerSheet, downloadAnswerSheetPdf } from './utils/exportUtils';
 import { shuffleQuestions, shuffleAllOptions } from './utils/shuffleUtils';
+import { FileSpreadsheet, FileJson, Download, BookOpen, LayoutGrid } from 'lucide-react';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'landing' | 'admin' | 'exercise'>('landing');
-  const [adminMode, setAdminMode] = useState<'manual' | 'ai'>('manual');
+  const [landingTab, setLandingTab] = useState<'start' | 'resources'>('start');
+  const [adminMode, setAdminMode] = useState<'manual' | 'ai' | 'downloads'>('manual');
   const [questions, setQuestions] = useState<EduCBTQuestion[]>([]);
+  const [resources, setResources] = useState<DownloadResource[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeToken, setActiveToken] = useState('');
@@ -48,6 +52,98 @@ const App: React.FC = () => {
     shuffleOptions: false,
     duration: 60 
   });
+
+  useEffect(() => {
+    const fetchResources = async () => {
+      const client = getSupabase();
+      if (!client) {
+        const savedResources = localStorage.getItem('epro_resources');
+        if (savedResources) setResources(JSON.parse(savedResources));
+        return;
+      }
+      
+      const { data, error } = await client
+        .from('resources')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching resources:", error);
+        // Fallback to local storage if supabase fails
+        const savedResources = localStorage.getItem('epro_resources');
+        if (savedResources) setResources(JSON.parse(savedResources));
+      } else if (data) {
+        const mappedData: DownloadResource[] = data.map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          url: item.url,
+          type: item.type,
+          createdAt: new Date(item.created_at).getTime()
+        }));
+        setResources(mappedData);
+        localStorage.setItem('epro_resources', JSON.stringify(mappedData));
+      }
+    };
+
+    fetchResources();
+  }, []);
+
+  const handleAddResource = async (resource: Omit<DownloadResource, 'id' | 'createdAt'>) => {
+    const client = getSupabase();
+    if (!client) {
+      // Fallback to local only if no supabase
+      const newResource: DownloadResource = {
+        ...resource,
+        id: `res_${Date.now()}`,
+        createdAt: Date.now()
+      };
+      setResources(prev => [newResource, ...prev]);
+      return;
+    }
+
+    const { data, error } = await client
+      .from('resources')
+      .insert([{
+        title: resource.title,
+        description: resource.description,
+        url: resource.url,
+        type: resource.type
+      }])
+      .select();
+
+    if (error) {
+      console.error("Error adding resource:", error);
+      alert("Gagal menyimpan ke Supabase");
+    } else if (data) {
+      const newRes: DownloadResource = {
+        id: data[0].id,
+        title: data[0].title,
+        description: data[0].description,
+        url: data[0].url,
+        type: data[0].type,
+        createdAt: new Date(data[0].created_at).getTime()
+      };
+      setResources(prev => [newRes, ...prev]);
+    }
+  };
+
+  const handleDeleteResource = async (id: string) => {
+    const client = getSupabase();
+    if (client) {
+      const { error } = await client
+        .from('resources')
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error("Error deleting resource:", error);
+        alert("Gagal menghapus dari Supabase");
+        return;
+      }
+    }
+    setResources(prev => prev.filter(r => r.id !== id));
+  };
 
   const activeQuestionsSorted = useMemo(() => 
     questions.filter(q => !q.isDeleted).sort((a,b) => a.order - b.order), 
@@ -301,43 +397,164 @@ const App: React.FC = () => {
            </div>
         </div>
         <div className="w-full bg-white rounded-[3rem] shadow-2xl p-10 md:p-16 border border-white/20 space-y-12">
-           <div className="space-y-2">
-             <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Mulai Latihan Klasikal</h2>
-             <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Masukkan Token Latihan</p>
+           {/* Tab Switcher */}
+           <div className="flex justify-center p-1.5 bg-slate-100 rounded-2xl w-fit mx-auto">
+              <button 
+                onClick={() => setLandingTab('start')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${landingTab === 'start' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Mulai Latihan
+              </button>
+              <button 
+                onClick={() => setLandingTab('resources')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${landingTab === 'resources' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                <Download className="w-4 h-4" />
+                Pusat Unduhan
+              </button>
            </div>
-           <div className="max-w-md mx-auto space-y-4">
-             <input type="text" placeholder="TOKEN" className="w-full p-6 bg-slate-50 border-4 border-slate-100 rounded-[2rem] font-black text-center text-3xl uppercase tracking-[0.5em] focus:border-indigo-500 transition-all outline-none" value={activeToken} onChange={e => setActiveToken(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && handleStartExercise()} />
-             <button onClick={handleStartExercise} className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-lg uppercase tracking-widest shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all">Buka Sesi Belajar</button>
-           </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto pt-6 border-t border-slate-100">
-              <div className="text-left space-y-4">
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Panel Persiapan Guru</p>
-                 <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-2">
-                      <button onClick={() => downloadExcelTemplate(1)} className="flex items-center gap-2 p-3 bg-slate-50 hover:bg-white border border-slate-100 hover:border-indigo-200 rounded-2xl transition-all group">
-                        <span className="text-xl group-hover:scale-110 transition-transform">📥</span>
-                        <span className="text-[8px] font-black text-slate-500 uppercase leading-tight">Template V1<br/>(Standar)</span>
-                      </button>
-                      <button onClick={() => downloadExcelTemplate(2)} className="flex items-center gap-2 p-3 bg-slate-50 hover:bg-white border border-slate-100 hover:border-indigo-200 rounded-2xl transition-all group">
-                        <span className="text-xl group-hover:scale-110 transition-transform">📥</span>
-                        <span className="text-[8px] font-black text-slate-500 uppercase leading-tight">Template V2<br/>(Advanced)</span>
-                      </button>
-                    </div>
-                    <label className={`flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 hover:bg-white border-2 border-slate-100 hover:border-indigo-200 rounded-3xl transition-all group cursor-pointer ${isImportingLanding ? 'opacity-50' : ''}`}>
-                       <span className="text-2xl group-hover:scale-110 transition-transform">{isImportingLanding ? '⏳' : '📤'}</span>
-                       <span className="text-[9px] font-black text-slate-500 uppercase">{isImportingLanding ? 'Loading...' : 'Upload Soal'}</span>
-                       <input type="file" className="hidden" accept=".xlsx, .xls, .json" onChange={handleLandingFileImport} disabled={isImportingLanding} />
-                    </label>
-                 </div>
-              </div>
-              <div className="text-left space-y-4">
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Kontrol Akses</p>
-                 <button onClick={() => setShowAdminLogin(true)} className="w-full h-[100px] flex items-center justify-center gap-3 bg-slate-900 hover:bg-slate-800 text-white rounded-3xl transition-all shadow-xl">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                    <span className="text-xs font-black uppercase tracking-widest">Manajemen Soal</span>
-                 </button>
-              </div>
-           </div>
+
+           {landingTab === 'start' ? (
+             <>
+               <div className="space-y-2">
+                 <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Mulai Latihan Klasikal</h2>
+                 <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Masukkan Token Latihan</p>
+               </div>
+               <div className="max-w-md mx-auto space-y-4">
+                 <input type="text" placeholder="TOKEN" className="w-full p-6 bg-slate-50 border-4 border-slate-100 rounded-[2rem] font-black text-center text-3xl uppercase tracking-[0.5em] focus:border-indigo-500 transition-all outline-none" value={activeToken} onChange={e => setActiveToken(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && handleStartExercise()} />
+                 <button onClick={handleStartExercise} className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-lg uppercase tracking-widest shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all">Buka Sesi Belajar</button>
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto pt-6 border-t border-slate-100">
+                  <div className="text-left space-y-4">
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Panel Persiapan Guru</p>
+                     <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-2">
+                          <button onClick={() => downloadExcelTemplate(1)} className="flex items-center gap-2 p-3 bg-slate-50 hover:bg-white border border-slate-100 hover:border-indigo-200 rounded-2xl transition-all group">
+                            <span className="text-xl group-hover:scale-110 transition-transform">📥</span>
+                            <span className="text-[8px] font-black text-slate-500 uppercase leading-tight">Template V1<br/>(Standar)</span>
+                          </button>
+                          <button onClick={() => downloadExcelTemplate(2)} className="flex items-center gap-2 p-3 bg-slate-50 hover:bg-white border border-slate-100 hover:border-indigo-200 rounded-2xl transition-all group">
+                            <span className="text-xl group-hover:scale-110 transition-transform">📥</span>
+                            <span className="text-[8px] font-black text-slate-500 uppercase leading-tight">Template V2<br/>(Advanced)</span>
+                          </button>
+                        </div>
+                        <label className={`flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 hover:bg-white border-2 border-slate-100 hover:border-indigo-200 rounded-3xl transition-all group cursor-pointer ${isImportingLanding ? 'opacity-50' : ''}`}>
+                           <span className="text-2xl group-hover:scale-110 transition-transform">{isImportingLanding ? '⏳' : '📤'}</span>
+                           <span className="text-[9px] font-black text-slate-500 uppercase">{isImportingLanding ? 'Loading...' : 'Upload Soal'}</span>
+                           <input type="file" className="hidden" accept=".xlsx, .xls, .json" onChange={handleLandingFileImport} disabled={isImportingLanding} />
+                        </label>
+                     </div>
+                  </div>
+                  <div className="text-left space-y-4">
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Kontrol Akses</p>
+                     <button onClick={() => setShowAdminLogin(true)} className="w-full h-[100px] flex items-center justify-center gap-3 bg-slate-900 hover:bg-slate-800 text-white rounded-3xl transition-all shadow-xl">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        <span className="text-xs font-black uppercase tracking-widest">Manajemen Soal</span>
+                     </button>
+                  </div>
+               </div>
+             </>
+           ) : (
+             <div className="space-y-8 animate-fade-in">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Pusat Unduhan</h2>
+                  <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Unduh Template & Sumber Daya</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                   {/* Default Resources */}
+                   {[
+                     {
+                       title: "Template Excel V1",
+                       desc: "Format standar untuk impor soal pilihan ganda sederhana.",
+                       icon: <FileSpreadsheet className="w-8 h-8 text-emerald-500" />,
+                       type: "excel",
+                       action: () => downloadExcelTemplate(1)
+                     },
+                     {
+                       title: "Template Excel V2",
+                       desc: "Format lanjutan dengan dukungan gambar dan tipe soal kompleks.",
+                       icon: <FileSpreadsheet className="w-8 h-8 text-emerald-600" />,
+                       type: "excel",
+                       action: () => downloadExcelTemplate(2)
+                     }
+                   ].map((item, idx) => (
+                     <div key={`def-${idx}`} className="bg-slate-50 border border-slate-100 p-6 rounded-[2rem] flex flex-col items-center text-center gap-4 hover:border-indigo-200 hover:bg-white transition-all group">
+                        <div className="p-4 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
+                          {item.icon}
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="font-black text-slate-900 uppercase text-sm tracking-tight">{item.title}</h3>
+                          <p className="text-[10px] text-slate-400 font-bold leading-relaxed">{item.desc}</p>
+                        </div>
+                        <button 
+                          onClick={item.action}
+                          className="mt-2 flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all"
+                        >
+                          <Download className="w-3 h-3" />
+                          Unduh {item.type.toUpperCase()}
+                        </button>
+                     </div>
+                   ))}
+
+                   {/* Dynamic Resources from Admin */}
+                   {resources.map((res) => (
+                     <div key={res.id} className="bg-indigo-50/30 border border-indigo-100 p-6 rounded-[2rem] flex flex-col items-center text-center gap-4 hover:border-indigo-300 hover:bg-white transition-all group">
+                        <div className="p-4 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
+                          {res.type === 'excel' ? <FileSpreadsheet className="w-8 h-8 text-emerald-500" /> : 
+                           res.type === 'json' ? <FileJson className="w-8 h-8 text-amber-500" /> :
+                           <Download className="w-8 h-8 text-indigo-500" />}
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="font-black text-slate-900 uppercase text-sm tracking-tight">{res.title}</h3>
+                          <p className="text-[10px] text-slate-400 font-bold leading-relaxed">{res.description}</p>
+                        </div>
+                        <button 
+                          onClick={() => window.open(res.url, '_blank')}
+                          className="mt-2 flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all"
+                        >
+                          <Download className="w-3 h-3" />
+                          Unduh {res.type.toUpperCase()}
+                        </button>
+                     </div>
+                   ))}
+
+                   {/* Sample JSON & Manual (Moved or kept as needed) */}
+                   <div className="bg-slate-50 border border-slate-100 p-6 rounded-[2rem] flex flex-col items-center text-center gap-4 hover:border-indigo-200 hover:bg-white transition-all group">
+                        <div className="p-4 bg-white rounded-2xl shadow-sm group-hover:scale-110 transition-transform">
+                          <FileJson className="w-8 h-8 text-amber-500" />
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="font-black text-slate-900 uppercase text-sm tracking-tight">Contoh Data JSON</h3>
+                          <p className="text-[10px] text-slate-400 font-bold leading-relaxed">Struktur data mentah untuk integrasi sistem atau cadangan data.</p>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const sampleData = [{
+                              id: "sample_1",
+                              text: "Contoh Pertanyaan?",
+                              type: "Pilihan Ganda",
+                              options: ["Opsi A", "Opsi B", "Opsi C", "Opsi D"],
+                              correctAnswer: 0,
+                              quizToken: "SAMPLE"
+                            }];
+                            const blob = new Blob([JSON.stringify(sampleData, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'sample_questions.json';
+                            a.click();
+                          }}
+                          className="mt-2 flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all"
+                        >
+                          <Download className="w-3 h-3" />
+                          Unduh JSON
+                        </button>
+                     </div>
+                </div>
+             </div>
+           )}
         </div>
       </div>
     </div>
@@ -639,9 +856,82 @@ const App: React.FC = () => {
           <div className="flex bg-slate-200 p-1 rounded-2xl">
             <button onClick={() => setAdminMode('manual')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${adminMode === 'manual' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>✍️ Input Manual</button>
             <button onClick={() => setAdminMode('ai')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${adminMode === 'ai' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>✨ Generate AI</button>
+            <button onClick={() => setAdminMode('downloads')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${adminMode === 'downloads' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>📥 Unduhan</button>
           </div>
           <div className="bg-white p-8 rounded-3xl shadow-sm border">
-            {adminMode === 'manual' ? <ManualEntryForm onAdd={(q) => setQuestions(p => [...p, q])} defaultSubject="Bahasa Indonesia" defaultPhase="Fase C" defaultToken={activeToken || "LAT1"} /> : <GenerationForm onGenerate={async (c) => { setLoading(true); try { const r = await generateEduCBTQuestions(c); setQuestions(p => [...p, ...r]); setActiveToken(c.quizToken.toUpperCase()); } finally {setLoading(false);} }} onImportJson={(imported) => setQuestions(prev => [...prev, ...imported])} isLoading={loading} examSettings={exerciseSettings} setExamSettings={setExerciseSettings} />}
+            {adminMode === 'manual' && <ManualEntryForm onAdd={(q) => setQuestions(p => [...p, q])} defaultSubject="Bahasa Indonesia" defaultPhase="Fase C" defaultToken={activeToken || "LAT1"} />}
+            {adminMode === 'ai' && <GenerationForm onGenerate={async (c) => { setLoading(true); try { const r = await generateEduCBTQuestions(c); setQuestions(p => [...p, ...r]); setActiveToken(c.quizToken.toUpperCase()); } finally {setLoading(false);} }} onImportJson={(imported) => setQuestions(prev => [...prev, ...imported])} isLoading={loading} examSettings={exerciseSettings} setExamSettings={setExerciseSettings} />}
+            {adminMode === 'downloads' && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Download className="w-5 h-5 text-indigo-600" />
+                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Manajemen Link Unduhan</h3>
+                </div>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.target as HTMLFormElement;
+                  const formData = new FormData(form);
+                  handleAddResource({
+                    title: formData.get('title') as string,
+                    description: formData.get('description') as string,
+                    url: formData.get('url') as string,
+                    type: formData.get('type') as any
+                  });
+                  form.reset();
+                }} className="space-y-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Judul Resource</label>
+                      <input name="title" required type="text" placeholder="Contoh: Template Excel V3" className="w-full p-3 bg-white border rounded-xl text-sm outline-none focus:border-indigo-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipe File</label>
+                      <select name="type" className="w-full p-3 bg-white border rounded-xl text-sm outline-none focus:border-indigo-500">
+                        <option value="excel">Excel (.xlsx)</option>
+                        <option value="json">JSON (.json)</option>
+                        <option value="doc">Dokumen (.pdf/docx)</option>
+                        <option value="other">Lainnya</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Link URL (Download)</label>
+                    <input name="url" required type="url" placeholder="https://drive.google.com/..." className="w-full p-3 bg-white border rounded-xl text-sm outline-none focus:border-indigo-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Deskripsi Singkat</label>
+                    <textarea name="description" required placeholder="Jelaskan isi file ini..." className="w-full p-3 bg-white border rounded-xl text-sm outline-none focus:border-indigo-500 min-h-[80px]" />
+                  </div>
+                  <button type="submit" className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all">Tambah Resource</button>
+                </form>
+
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Daftar Resource Aktif</h4>
+                  {resources.length === 0 ? (
+                    <div className="p-8 text-center border-2 border-dashed rounded-2xl text-slate-400 text-xs font-bold uppercase">Belum ada resource tambahan</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {resources.map(res => (
+                        <div key={res.id} className="flex items-center justify-between p-4 bg-white border rounded-2xl hover:border-indigo-200 transition-all group">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-slate-50 rounded-lg">
+                              {res.type === 'excel' ? <FileSpreadsheet className="w-5 h-5 text-emerald-500" /> : <FileJson className="w-5 h-5 text-amber-500" />}
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{res.title}</p>
+                              <p className="text-[9px] text-slate-400 font-bold truncate max-w-[200px]">{res.url}</p>
+                            </div>
+                          </div>
+                          <button onClick={() => handleDeleteResource(res.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-all">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="lg:col-span-7">

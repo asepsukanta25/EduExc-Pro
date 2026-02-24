@@ -65,3 +65,12 @@ export interface GenerationConfig {
   };
   specialInstructions?: string;
 }
+
+export interface DownloadResource {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  type: 'excel' | 'json' | 'doc' | 'other';
+  createdAt: number;
+}
